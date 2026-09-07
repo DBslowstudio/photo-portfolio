@@ -1,0 +1,54 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+// 联系页只做静态展示，不接后端表单——Vercel 免费 Hobby 套餐
+// 不建议为此额外消耗 Serverless 函数额度，纯静态最省。
+const contactItems = [
+  { label: '邮箱', value: 'you@example.com', href: 'mailto:you@example.com' },
+  { label: '微信', value: 'your-wechat-id', href: null },
+  { label: '微博', value: '@your-weibo', href: '#' },
+  { label: 'Instagram', value: '@your-instagram', href: '#' },
+];
+---
+
+<Layout
+  title="联系 - 摄影作品集"
+  description="合作邀约与联系方式。"
+>
+  <div class="h-24"></div>
+
+  <section class="max-w-4xl mx-auto px-6 pb-24">
+    <h1 class="section-title">联系</h1>
+
+    <p class="mt-8 text-gray-300 leading-relaxed max-w-2xl">
+      约拍、授权、展览或印刷合作，欢迎通过以下任一方式联系。
+      来信请注明用途与期望时间，我会尽快回复。
+    </p>
+
+    <div class="mt-14 border-t border-dark-700">
+      {
+        contactItems.map((item) => (
+          <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-8 py-6 border-b border-dark-700">
+            <span class="text-gray-500 text-xs uppercase tracking-widest md:w-32 shrink-0">
+              {item.label}
+            </span>
+            {item.href ? (
+              <a
+                href={item.href}
+                class="text-gray-200 hover:text-white transition-colors"
+              >
+                {item.value}
+              </a>
+            ) : (
+              <span class="text-gray-200">{item.value}</span>
+            )}
+          </div>
+        ))
+      }
+    </div>
+
+    <div class="mt-16">
+      <a href="/" class="nav-link hover:border-white/40">← 返回作品</a>
+    </div>
+  </section>
+</Layout>

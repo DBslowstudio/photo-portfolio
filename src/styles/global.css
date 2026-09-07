@@ -1,0 +1,47 @@
+@import 'tailwindcss';
+@import 'photoswipe/dist/photoswipe.css';
+
+/*
+ * Tailwind v4 用 @theme 取代了文档里的 tailwind.config.mjs。
+ * 文档给的 dark-900/800/700/600 四个色值和 Inter/Noto Sans SC 字体栈
+ * 在这里等价声明，bg-dark-900、font-sans 等类名保持原样可用。
+ */
+@theme {
+  --color-dark-900: #0a0a0a;
+  --color-dark-800: #141414;
+  --color-dark-700: #1e1e1e;
+  --color-dark-600: #2a2a2a;
+
+  --font-sans: 'Inter', 'Noto Sans SC', system-ui, sans-serif;
+}
+
+/*
+ * Header.astro 的滚动脚本是用 classList.add() 动态挂类的，
+ * Tailwind 扫不到字符串形式的类名，这里显式登记，
+ * 否则页面滚动时导航栏背景不会变化。
+ */
+@source inline('{bg-dark-900/90,backdrop-blur-md,shadow-lg,bg-dark-900/95,backdrop-blur-sm}');
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-dark-900 text-gray-200 font-sans antialiased;
+  }
+
+  ::selection {
+    @apply bg-white/20 text-white;
+  }
+}
+
+@layer components {
+  .nav-link {
+    @apply text-sm tracking-widest uppercase text-gray-400 hover:text-white transition-colors duration-300;
+  }
+
+  .section-title {
+    @apply text-3xl md:text-4xl font-light tracking-wide text-white;
+  }
+}

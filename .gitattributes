@@ -1,0 +1,27 @@
+# 跨平台行尾统一（Windows 2 台 + Mac 1 台协作必需）
+#
+# 没有这个文件时：Windows 的 git 默认 core.autocrlf=true，检出成 CRLF；
+# Mac 默认不转换，是 LF。三台机器来回切会让几乎每个文本文件都显示为"已修改"，
+# 真正的改动被淹没，还容易产生无意义的冲突。
+#
+# 下面统一为 LF（仓库内和检出时都是 LF），Mac 和 Windows 行为一致。
+* text=auto eol=lf
+
+# 明确标记二进制文件，避免被当作文本做行尾转换而损坏
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+
+# package-lock.json 体积大（784KB）但必须入库以保证三台机器依赖版本一致，
+# 标记为文本并禁止合并时自动改写，冲突时用 --theirs 策略更安全
+package-lock.json text eol=lf -diff
+
+# 这两份清单是给人读的文档，在 Windows 记事本里 CRLF 更友好，
+# 但为了跨平台一致仍统一 LF（VS Code 等编辑器都能正常显示）
+*.md text eol=lf

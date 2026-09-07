@@ -1,0 +1,311 @@
+---
+import { getCollection, type CollectionEntry } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+import QrCode from '../../components/QrCode.astro';
+
+export async function getStaticPaths() {
+  const entries = await getCollection('photos');
+  // 排序规则必须和首页网格一致（按拍摄日期倒序），
+  // 否则「上一张 / 下一张」的跳转顺序会和用户浏览顺序对不上。
+  const ordered = [...entries].sort((a, b) =>
+    (b.data.date ?? '').localeCompare(a.data.date ?? ''),
+  );
+  return ordered.map((entry, index) => ({
+    params: { slug: entry.id },
+    props: { entry, ordered, currentIndex: index },
+  }));
+}
+
+interface Props {
+  entry: CollectionEntry<'photos'>;
+  ordered: CollectionEntry<'photos'>[];
+  currentIndex: number;
+}
+
+const { entry, ordered, currentIndex } = Astro.props;
+const photo = entry.data;
+
+const prevPhoto = currentIndex > 0 ? ordered[currentIndex - 1] : null;
+const nextPhoto =
+  currentIndex < ordered.length - 1 ? ordered[currentIndex + 1] : null;
+
+// 灯箱需要每张图的真实尺寸来预留版面，避免打开瞬间跳动
+const IMAGE_WIDTH = 1600;
+const IMAGE_HEIGHT = 1200;
+
+const lightboxItems = ordered.map((p) => ({
+  src: p.data.image,
+  width: IMAGE_WIDTH,
+  height: IMAGE_HEIGHT,
+  alt: p.data.title,
+  // title 不是 PhotoSwipe 的标准字段，但 data 对象会原样保留自定义属性，
+  // 下面 uiRegister 里通过 currSlide.data.title 读出来渲染成标题条
+  title: p.data.title,
+}));
+
+const exifRows: Array<{ label: string; value?: string }> = [
+  { label: '相机', value: photo.exif?.camera },
+  { label: '镜头', value: photo.exif?.lens },
+  { label: '焦距', value: photo.exif?.focalLength },
+  { label: '光圈', value: photo.exif?.aperture },
+  { label: '快门', value: photo.exif?.shutterSpeed },
+  { label: '感光度', value: photo.exif?.iso },
+];
+
+const hasExif = exifRows.some((row) => row.value);
+
+/**
+ * ⚠️ 二维码编码的是本页网址，而网址来自 astro.config.mjs 的 site 字段
+ * （静态构建时 Astro.url 由 site 推导）。部署前必须把 site 改成
+ * https://dbslowstudio.cn，否则二维码会指向占位地址、扫出来是错的。
+ * 已在此做兜底：site 未配置时回退到相对路径，至少不会编码出坏 URL。
+ */
+const canonicalUrl = Astro.site
+  ? new URL(Astro.url.pathname, Astro.site).href
+  : Astro.url.pathname;
+---
+
+<Layout
+  title={`${photo.title} - SLOW 慢驶摄影画廊`}
+  description={photo.description || photo.title}
+>
+  <!-- 顶部占位，避免固定导航盖住内容 -->
+  <div class="h-24"></div>
+
+  <article class="max-w-6xl mx-auto px-6 pb-24">
+    <!-- 主图 + 侧栏（大屏并排，小屏堆叠） -->
+    <div class="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-10 items-start">
+      <!-- 主图：点击打开 PhotoSwipe 灯箱 -->
+      <figure class="relative bg-dark-800 overflow-hidden group">
+        <button
+          id="lightbox-trigger"
+          type="button"
+          class="block w-full cursor-zoom-in"
+          aria-label={`放大查看 ${photo.title}`}
+        >
+          <img
+            src={photo.image}
+            alt={photo.title}
+            width={IMAGE_WIDTH}
+            height={IMAGE_HEIGHT}
+            class="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-[1.02]"
+          />
+        </button>
+        <figcaption
+          class="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-black/80 to-transparent pointer-events-none"
+        >
+          <p class="text-gray-300 text-xs tracking-widest uppercase">
+            点击图片放大查看
+          </p>
+        </figcaption>
+      </figure>
+
+      <!-- 侧栏：二维码。开关与 Logo 都在 TinaCMS 后台可控 -->
+      <aside class="flex flex-col items-center gap-8 lg:sticky lg:top-28">
+        <QrCode
+          text={canonicalUrl}
+          show={photo.showQrCode}
+          logo={photo.qrLogo || ''}
+          size={150}
+        />
+        {
+          photo.date && (
+            <p class="text-gray-500 text-xs tracking-widest uppercase lg:hidden">
+              {photo.date}
+            </p>
+          )
+        }
+      </aside>
+    </div>
+
+    <!-- 标题与描述 -->
+    <header class="mt-12">
+      <h1 class="text-4xl md:text-5xl font-light tracking-wide text-white">
+        {photo.title}
+      </h1>
+      {
+        photo.location && (
+          <p class="text-gray-400 mt-3 tracking-wide">
+            {photo.location}
+            {photo.date && ` · ${photo.date}`}
+          </p>
+        )
+      }
+      {
+        !photo.location && photo.date && (
+          <p class="text-gray-400 mt-3 tracking-wide">{photo.date}</p>
+        )
+      }
+      {
+        photo.description && (
+          <p class="text-gray-300 mt-6 max-w-2xl leading-relaxed">
+            {photo.description}
+          </p>
+        )
+      }
+    </header>
+
+    <!-- 拍摄参数：无数据时整块不渲染，不留空标题 -->
+    {
+      hasExif && (
+        <section class="mt-14 border-t border-dark-700 pt-10">
+          <h2 class="text-sm tracking-widest uppercase text-gray-500 mb-6">
+            拍摄参数
+          </h2>
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
+            {exifRows.map(
+              (row) =>
+                row.value && (
+                  <div>
+                    <p class="text-gray-500 text-xs uppercase tracking-wider">
+                      {row.label}
+                    </p>
+                    <p class="text-gray-200 mt-1">{row.value}</p>
+                  </div>
+                ),
+            )}
+          </div>
+          <p class="text-gray-600 text-xs mt-6">
+            参数由图片 EXIF 自动提取，缺失项可在后台手动补充。
+          </p>
+        </section>
+      )
+    }
+
+    <!-- 上一张 / 下一张 -->
+    <nav
+      class="mt-16 border-t border-dark-700 pt-10 flex items-center justify-between gap-4"
+    >
+      {
+        prevPhoto ? (
+          <a href={`/photos/${prevPhoto.id}`} class="group text-left">
+            <span class="text-gray-500 text-xs tracking-widest uppercase block">
+              上一张
+            </span>
+            <span class="text-gray-200 group-hover:text-white transition-colors mt-1 block">
+              ← {prevPhoto.data.title}
+            </span>
+          </a>
+        ) : (
+          <span />
+        )
+      }
+      <a
+        href="/"
+        class="nav-link shrink-0 border border-dark-600 px-6 py-2 hover:border-white/40"
+      >
+        返回作品
+      </a>
+      {
+        nextPhoto ? (
+          <a href={`/photos/${nextPhoto.id}`} class="group text-right">
+            <span class="text-gray-500 text-xs tracking-widest uppercase block">
+              下一张
+            </span>
+            <span class="text-gray-200 group-hover:text-white transition-colors mt-1 block">
+              {nextPhoto.data.title} →
+            </span>
+          </a>
+        ) : (
+          <span />
+        )
+      }
+    </nav>
+  </article>
+
+  <!--
+    PhotoSwipe 数据通过 JSON script 标签传递。
+    不用 define:vars，因为 define:vars 会让 Astro 放弃对脚本做打包，
+    import 'photoswipe/lightbox' 就会失效。
+  -->
+  <script
+    is:inline
+    type="application/json"
+    id="lightbox-data"
+    set:html={JSON.stringify({
+      items: lightboxItems,
+      startIndex: currentIndex,
+    })}
+  ></script>
+
+  <script>
+    import PhotoSwipeLightbox from 'photoswipe/lightbox';
+    // 不在此处引入 photoswipe.css：global.css 已引入，Layout 全站加载，
+    // 重复引入会让详情页多带一份约 4.5KB 的相同样式。
+
+    const dataEl = document.getElementById('lightbox-data');
+    const trigger = document.getElementById('lightbox-trigger');
+
+    if (dataEl && trigger && dataEl.textContent) {
+      const { items, startIndex } = JSON.parse(dataEl.textContent) as {
+        items: Array<{
+          src: string;
+          width: number;
+          height: number;
+          alt: string;
+          title: string;
+        }>;
+        startIndex: number;
+      };
+
+      const lightbox = new PhotoSwipeLightbox({
+        // dataSource 是显式图片数组，无需 gallery/children 这类 DOM 查找选项。
+        // 注意：PhotoSwipe 5 没有 initialPointerIndex 这个选项（写了是静默失效），
+        // 起始图序号由下面 loadAndOpen(startIndex) 传入。
+        dataSource: items,
+        pswpModule: () => import('photoswipe'),
+        showHideAnimationType: 'zoom',
+        bgOpacity: 0.94,
+        padding: { top: 32, bottom: 32, left: 24, right: 24 },
+      });
+
+      // 灯箱底部显示当前照片标题。title 是挂在 slide data 上的自定义字段。
+      lightbox.on('uiRegister', () => {
+        lightbox.pswp?.ui?.registerElement({
+          name: 'photoCaption',
+          className: 'pswp__photo-caption',
+          appendTo: 'wrapper',
+          onInit: (el, pswp) => {
+            const render = () => {
+              const data = pswp.currSlide?.data as
+                | { title?: string }
+                | undefined;
+              el.textContent = data?.title ?? '';
+            };
+            // 立即渲染一次：change 事件不保证在初始化时触发，
+            // 只靠监听会让用户点开第一张图时看到空标题条。
+            render();
+            pswp.on('change', render);
+          },
+        });
+      });
+
+      lightbox.init();
+
+      // 主图不走 PhotoSwipe 默认的缩略图自动发现，手动触发
+      trigger.addEventListener('click', () => {
+        lightbox.loadAndOpen(startIndex);
+      });
+    }
+  </script>
+
+  <!--
+    is:global 是必需的：这个元素由 PhotoSwipe 在运行时动态创建，
+    带不上 Astro 的作用域哈希属性，用默认的 scoped <style> 会匹配不到。
+  -->
+  <style is:global>
+    .pswp__photo-caption {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 14px 18px;
+      font-size: 14px;
+      letter-spacing: 0.08em;
+      color: #d4d4d4;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.75), transparent);
+      text-align: center;
+      pointer-events: none;
+    }
+  </style>
+</Layout>

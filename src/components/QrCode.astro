@@ -1,0 +1,117 @@
+---
+import QRCode from 'qrcode';
+
+interface Props {
+  /** 二维码内容，通常是详情页完整网址 */
+  text: string;
+  /** 是否显示 */
+  show?: boolean;
+  /** 中心品牌 Logo 图片路径，留空则不叠加 */
+  logo?: string;
+  /** 尺寸（px） */
+  size?: number;
+}
+
+const { text, show = true, logo = '', size = 150 } = Astro.props;
+
+/**
+ * 替代原指南里的 `astro-qr` —— 那个包在 npm 上不存在（registry 返回 404），
+ * import 会让构建直接失败。这里改用广泛使用的 `qrcode` 包。
+ *
+ * 在构建期生成 SVG 字符串内联进页面，好处：
+ * - 不依赖浏览器运行，纯静态站点也能用，不消耗 Vercel 函数额度
+ * - SVG 体积比 PNG 小且无损缩放，手机扫码更稳
+ * - 错误纠正等级设为 H（30%），中心叠加 Logo 挡住一部分也能正常扫出来
+ */
+let qrSvg = '';
+if (show && text) {
+  qrSvg = await QRCode.toString(text, {
+    type: 'svg',
+    width: size,
+    margin: 1,
+    errorCorrectionLevel: 'H',
+    color: {
+      dark: '#0a0a0a',
+      light: '#ffffff',
+    },
+  });
+}
+
+// QRCode.toString 返回的是带 <?xml?> 声明的完整文档，
+// 直接内联进 HTML 不合法，这里只取 <svg> 元素本身
+const svgBody = qrSvg.includes('<svg')
+  ? qrSvg.slice(qrSvg.indexOf('<svg'))
+  : qrSvg;
+---
+
+{
+  show && qrSvg && (
+    <div class="qr-container" style={`--qr-size:${size}px`}>
+      <div class="qr-frame">
+        <Fragment set:html={svgBody} />
+        {logo && (
+          <span class="qr-logo">
+            <img src={logo} alt="" width="44" height="44" />
+          </span>
+        )}
+      </div>
+      <p class="qr-hint">扫码查看高清大图与拍摄简介</p>
+    </div>
+  )
+}
+
+<style>
+  .qr-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .qr-frame {
+    position: relative;
+    width: var(--qr-size);
+    height: var(--qr-size);
+    padding: 10px;
+    background: #fff;
+    border-radius: 6px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  }
+
+  /* SVG 由 qrcode 生成，带自己的 width/height，这里强制撑满容器 */
+  .qr-frame :global(svg) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Logo 叠加：白底垫圈 + H 级纠错，挡住中心不影响扫码 */
+  .qr-logo {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 34%;
+    height: 34%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    border-radius: 8px;
+    padding: 3px;
+  }
+
+  .qr-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+
+  .qr-hint {
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    color: #737373;
+    text-align: center;
+  }
+</style>

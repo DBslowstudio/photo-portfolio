@@ -1,0 +1,90 @@
+---
+import { getCollection } from 'astro:content';
+import Layout from '../layouts/Layout.astro';
+import ScatteredPhotos from '../components/ScatteredPhotos.astro';
+import PhotoGrid from '../components/PhotoGrid.astro';
+
+// 照片数据统一来自内容集合（src/content/photos/*.mdx），
+// 由 TinaCMS 在 /admin 可视化编辑，构建时读取，纯静态不消耗函数额度。
+const entries = await getCollection('photos');
+
+// 按拍摄日期倒序，新作品排在前面
+const photos = [...entries].sort((a, b) =>
+  (b.data.date ?? '').localeCompare(a.data.date ?? ''),
+);
+---
+
+<Layout
+  title="SLOW 慢驶 · 摄影作品集"
+  description="SLOW 慢驶摄影画廊，展示风光、人文、纪实等题材作品。"
+>
+  <!--
+    首屏：散落照片交互层。
+    它本身就是 100vh 暗色画布，所以取代了原先的 Hero 大图区块——
+    若两者叠加会出现连续两屏（200vh）的空白滚动。
+    品牌标题以浮层形式压在散落照片之上，保留原有的品牌展示。
+  -->
+  <div class="hero-scatter">
+    <ScatteredPhotos photos={photos} />
+    <div class="hero-overlay">
+      <h1>SLOW 慢驶</h1>
+      <p>用影像记录世界</p>
+    </div>
+  </div>
+
+  <!-- 照片网格：向下滚动无缝衔接 -->
+  <div id="gallery">
+    <PhotoGrid photos={photos} />
+  </div>
+</Layout>
+
+<style>
+  .hero-scatter {
+    position: relative;
+  }
+
+  /* 品牌浮层：绝对定位叠在散落照片上，不拦截照片的点击 */
+  .hero-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 102;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    text-align: center;
+    pointer-events: none;
+    padding: 0 24px;
+  }
+
+  .hero-overlay h1 {
+    font-size: clamp(2.4rem, 7vw, 4.6rem);
+    font-weight: 300;
+    letter-spacing: 0.28em;
+    color: #fff;
+    /* 深色底衬，保证压在照片上仍清晰可读 */
+    text-shadow: 0 4px 32px rgba(0, 0, 0, 0.85);
+    margin: 0;
+    padding-left: 0.28em; /* 抵消 letter-spacing 造成的视觉偏移 */
+  }
+
+  .hero-overlay p {
+    font-size: clamp(1rem, 2vw, 1.4rem);
+    font-weight: 300;
+    letter-spacing: 0.22em;
+    color: rgba(255, 255, 255, 0.78);
+    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.9);
+    margin: 0;
+  }
+
+  /* 小屏时散落照片改为网格流式布局，浮层改为顶部静态展示 */
+  @media (max-width: 640px) {
+    .hero-overlay {
+      position: static;
+      background: #0a0a0a;
+      padding: 96px 24px 8px;
+      pointer-events: none;
+    }
+  }
+</style>

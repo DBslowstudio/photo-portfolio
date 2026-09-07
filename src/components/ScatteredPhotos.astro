@@ -1,0 +1,226 @@
+---
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  photos: CollectionEntry<'photos'>[];
+}
+
+const { photos } = Astro.props;
+
+/**
+ * 散落照片：首屏 100vh 的暗色画布，照片以随机角度和位置散落，
+ * 向下滚动无缝衔接下方的常规画廊网格。
+ *
+ * 随机值由客户端脚本生成，不在构建期计算。原因：
+ * 1. Astro 是静态构建，构建期跑 Math.random() 会把随机结果「冻」进 HTML，
+ *    每次部署布局都固定不变，失去散落感；
+ * 2. 服务端随机会导致水合内容不一致，破坏 SEO 与可访问性。
+ * 所以这里只输出稳定的占位位置，由脚本在浏览器里重排。
+ *
+ * 照片顺序按 date 倒序，保证 SSR 出来的 DOM 顺序对搜索引擎有意义。
+ */
+const sorted = [...photos].sort((a, b) =>
+  (b.data.date ?? '').localeCompare(a.data.date ?? ''),
+);
+---
+
+<section
+  class="scattered-container"
+  id="scattered"
+  aria-label="散落照片展示"
+>
+  <div class="scattered-hint">
+    <span>向下滚动浏览完整作品</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="1.5"
+        d="M12 4v16m0 0l-6-6m6 6l6-6"></path>
+    </svg>
+  </div>
+
+  {
+    sorted.map((entry) => (
+      <a
+        href={`/photos/${entry.id}`}
+        class="scattered-photo"
+        data-scatter
+        aria-label={entry.data.title}
+      >
+        <img src={entry.data.image} alt={entry.data.title} loading="lazy" />
+        <span class="photo-caption">{entry.data.title}</span>
+      </a>
+    ))
+  }
+</section>
+
+<script>
+  const container = document.getElementById('scattered');
+  const items = container?.querySelectorAll<HTMLElement>('[data-scatter]');
+
+  if (container && items && items.length) {
+    // 网格化撒点：把画布切成若干格，每格放一张，避免照片堆叠成一团
+    const cols = Math.ceil(Math.sqrt(items.length));
+    const rows = Math.ceil(items.length / cols);
+
+    items.forEach((el, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+
+      // 每格内再抖动一下，保留「散落」的随意感
+      const jitterX = (Math.random() - 0.5) * (80 / cols);
+      const jitterY = (Math.random() - 0.5) * (70 / rows);
+      const left = (col / cols) * 82 + 6 + jitterX;
+      const top = (row / rows) * 66 + 12 + jitterY;
+      const rotate = (Math.random() - 0.5) * 22;
+
+      el.style.left = `${left}%`;
+      el.style.top = `${top}%`;
+      el.style.setProperty('--rot', `${rotate.toFixed(2)}deg`);
+      el.style.zIndex = String(i);
+    });
+
+    // 滚轮视差：画布随滚动轻微上移，与下方网格自然衔接
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const rect = container.getBoundingClientRect();
+        const progress = Math.min(1, Math.max(0, -rect.top / rect.height));
+        container.style.setProperty('--scroll', progress.toFixed(3));
+        container.style.opacity = String(1 - progress * 0.85);
+        ticking = false;
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+</script>
+
+<style>
+  .scattered-container {
+    --scroll: 0;
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+    background: #0a0a0a;
+  }
+
+  /* 初始态：居中收起、透明，等脚本撒开后过渡到位 */
+  .scattered-photo {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    --rot: 0deg;
+    width: clamp(140px, 20vw, 250px);
+    background: #fff;
+    padding: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+    transform: rotate(var(--rot)) translateY(calc(var(--scroll) * -40px));
+    transition:
+      transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.45s ease;
+    text-decoration: none;
+    cursor: pointer;
+    opacity: 0;
+    animation: scatter-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  @keyframes scatter-in {
+    to {
+      opacity: 1;
+    }
+  }
+
+  .scattered-photo:hover,
+  .scattered-photo:focus-visible {
+    transform: rotate(0deg) scale(1.12) translateY(calc(var(--scroll) * -40px));
+    z-index: 100 !important;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75);
+    outline: none;
+  }
+
+  .scattered-photo img {
+    width: 100%;
+    display: block;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    background: #141414;
+  }
+
+  .photo-caption {
+    display: block;
+    margin-top: 8px;
+    font-size: 13px;
+    color: #333;
+    text-align: center;
+    font-family: 'Inter', 'Noto Sans SC', system-ui, sans-serif;
+    letter-spacing: 0.04em;
+  }
+
+  .scattered-hint {
+    position: absolute;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 101;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: rgba(255, 255, 255, 0.42);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    pointer-events: none;
+    animation: hint-float 2.8s ease-in-out infinite;
+  }
+
+  .scattered-hint svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  @keyframes hint-float {
+    0%,
+    100% {
+      transform: translateX(-50%) translateY(0);
+    }
+    50% {
+      transform: translateX(-50%) translateY(6px);
+    }
+  }
+
+  /* 小屏改用两列网格，避免绝对定位下照片互相遮挡无法点按 */
+  @media (max-width: 640px) {
+    .scattered-container {
+      height: auto;
+      min-height: 100vh;
+      padding: 96px 16px 88px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+      align-content: start;
+    }
+
+    .scattered-photo {
+      position: static;
+      width: 100%;
+      transform: none;
+      animation: none;
+      opacity: 1;
+    }
+
+    .scattered-photo:hover,
+    .scattered-photo:focus-visible {
+      transform: scale(1.03);
+    }
+
+    .scattered-hint {
+      bottom: 20px;
+    }
+  }
+</style>
