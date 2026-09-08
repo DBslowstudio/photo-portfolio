@@ -55,10 +55,10 @@ export default defineConfig({
    * publicFolder 指 Astro 的静态资源根目录，outputFolder 指其下的子目录，
    * 两者合起来 = public/admin/，部署后即可用 /admin 访问。
    */
-  build: {
-    publicFolder: 'public',
-    outputFolder: 'admin',
-  },
+build: {
+  outputFolder: "admin", // 确保这一行存在
+  publicFolder: "public",
+},
 
   /**
    * 媒体文件存放位置。

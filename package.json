@@ -5,14 +5,12 @@
   "engines": {
     "node": "22.x"
   },
-  "scripts": {
-    "dev": "astro dev",
-    "build": "node scripts/extract-exif.js && astro build",
-    "build:cms": "node scripts/extract-exif.js && tinacms build && astro build",
-    "dev:cms": "tinacms dev -c \"astro dev\"",
+"scripts": {
+    "dev": "tinacms dev -c \"astro dev\"",
+    "build": "node scripts/extract-exif.js && tinacms build && astro build",
     "preview": "astro preview",
     "astro": "astro"
-  },
+},
   "dependencies": {
     "@astrojs/mdx": "^8.0.0",
     "@tailwindcss/vite": "^4.3.3",
