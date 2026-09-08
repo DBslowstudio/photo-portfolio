@@ -8,27 +8,32 @@ interface Props {
 const { photos } = Astro.props;
 
 /**
- * 散落照片：首屏 100vh 的暗色画布，照片以随机角度和位置散落，
- * 向下滚动无缝衔接下方的常规画廊网格。
+ * 散落照片：首屏 100vh 暗色画布上，一叠「稍微散落的扑克牌」。
+ * 照片与纯色色卡混杂、大幅重叠、角度各异，向下滚动无缝衔接画廊网格。
  *
- * 随机值由客户端脚本生成，不在构建期计算。原因：
- * 1. Astro 是静态构建，构建期跑 Math.random() 会把随机结果「冻」进 HTML，
- *    每次部署布局都固定不变，失去散落感；
- * 2. 服务端随机会导致水合内容不一致，破坏 SEO 与可访问性。
- * 所以这里只输出稳定的占位位置，由脚本在浏览器里重排。
+ * 只渲染画面本身，没有相纸白框、没有内边距、没有标题文字。
  *
- * 照片顺序按 date 倒序，保证 SSR 出来的 DOM 顺序对搜索引擎有意义。
+ * 为什么随机逻辑全部放在客户端脚本里：
+ * Astro 是静态构建，构建期跑 Math.random() 会把随机结果「冻」进 HTML，
+ * 每次部署布局都固定不变，就失去了「每次刷新数量和大小都不一样」的效果。
+ *
+ * 为什么服务端渲染有上限：
+ * 照片库将来会远超 30 张，若全部渲染进首屏 DOM，HTML 会随之无限膨胀。
+ * 这里只渲染最新 MAX_RENDERED 张作为候选池，客户端再从中随机抽取；
+ * 凑不够的总数用 JS 动态创建的纯色色卡补齐（色卡是装饰，无需 SEO、
+ * 也不发图片请求，所以不进服务端 HTML）。
  */
+const MAX_RENDERED = 30;
+
+// 按拍摄日期倒序，与下方画廊网格顺序一致
 const sorted = [...photos].sort((a, b) =>
   (b.data.date ?? '').localeCompare(a.data.date ?? ''),
 );
+
+const rendered = sorted.slice(0, MAX_RENDERED);
 ---
 
-<section
-  class="scattered-container"
-  id="scattered"
-  aria-label="散落照片展示"
->
+<section class="scattered-container" id="scattered" aria-label="散落照片展示">
   <div class="scattered-hint">
     <span>向下滚动浏览完整作品</span>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
@@ -41,47 +46,123 @@ const sorted = [...photos].sort((a, b) =>
   </div>
 
   {
-    sorted.map((entry) => (
+    rendered.map((entry) => (
       <a
         href={`/photos/${entry.id}`}
-        class="scattered-photo"
-        data-scatter
+        class="scatter-item scatter-photo"
+        data-scatter-photo
         aria-label={entry.data.title}
       >
-        <img src={entry.data.image} alt={entry.data.title} loading="lazy" />
-        <span class="photo-caption">{entry.data.title}</span>
+        <img
+          src={entry.data.image}
+          alt={entry.data.title}
+          loading="lazy"
+          width="1600"
+          height="1200"
+        />
       </a>
     ))
   }
 </section>
 
 <script>
+  /**
+   * 色卡调色板：低饱和灰调，在 #0a0a0a 暗背景上有质感又不刺眼。
+   * 真实照片不足时，用这些纯色块补齐总数，视觉上与照片同属「一叠卡片」。
+   */
+  const CARD_COLORS = [
+    '#c8552f', '#d98c3f', '#e0c060', '#7a8b3f', '#3f6b52', '#2f5d6b',
+    '#39506b', '#4a3f6b', '#6b3f5f', '#8c3f4a', '#a8524f', '#c47a5a',
+    '#8f9779', '#5d7a8c', '#7d6b8c', '#b08968', '#6d5c4a', '#4a5c4f',
+    '#8c6b4f', '#5f6b7d', '#a86b5a', '#6b7d5f', '#7d5f6b', '#4f6b6b',
+  ];
+
+  /** Fisher-Yates 洗牌。不用 sort(() => Math.random() - 0.5)，那种写法有偏差 */
+  function shuffle<T>(input: T[]): T[] {
+    const arr = [...input];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  const rand = (min: number, max: number) => min + Math.random() * (max - min);
+
   const container = document.getElementById('scattered');
-  const items = container?.querySelectorAll<HTMLElement>('[data-scatter]');
 
-  if (container && items && items.length) {
-    // 网格化撒点：把画布切成若干格，每格放一张，避免照片堆叠成一团
-    const cols = Math.ceil(Math.sqrt(items.length));
-    const rows = Math.ceil(items.length / cols);
+  if (container) {
+    const isSmall = window.matchMedia('(max-width: 640px)').matches;
 
-    items.forEach((el, i) => {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
+    // 每次刷新总数都不同：桌面 20-30 张，小屏 12-18 张（免得糊成一团）
+    const [minTotal, maxTotal] = isSmall ? [12, 18] : [20, 30];
+    const total = Math.round(rand(minTotal, maxTotal));
 
-      // 每格内再抖动一下，保留「散落」的随意感
-      const jitterX = (Math.random() - 0.5) * (80 / cols);
-      const jitterY = (Math.random() - 0.5) * (70 / rows);
-      const left = (col / cols) * 82 + 6 + jitterX;
-      const top = (row / rows) * 66 + 12 + jitterY;
-      const rotate = (Math.random() - 0.5) * 22;
+    // 卡片宽度范围：同一张照片每次刷新大小不一，高度由 aspect-ratio 推导
+    const [minW, maxW] = isSmall ? [86, 152] : [112, 238];
 
-      el.style.left = `${left}%`;
-      el.style.top = `${top}%`;
-      el.style.setProperty('--rot', `${rotate.toFixed(2)}deg`);
-      el.style.zIndex = String(i);
+    /**
+     * 散布半径（占容器宽/高的百分比）。刻意收得远小于卡片尺寸范围，
+     * 这样卡片必然大幅互相重叠，形成「一叠扑克牌」的密集堆叠感。
+     * 横向略大于纵向，贴合桌面宽屏比例。
+     */
+    const SPREAD_X = 24;
+    const SPREAD_Y = 20;
+
+    const photoEls = Array.from(
+      container.querySelectorAll<HTMLElement>('[data-scatter-photo]'),
+    );
+
+    // 从候选照片里随机抽取；不够 total 的部分用色卡补
+    const photoCount = Math.min(photoEls.length, total);
+    const chosenPhotos = shuffle(photoEls).slice(0, photoCount);
+    const cardCount = total - photoCount;
+
+    // 未被选中的照片要从 DOM 移除，否则会残留在画布中心
+    const chosenSet = new Set(chosenPhotos);
+    photoEls.forEach((el) => {
+      if (!chosenSet.has(el)) el.remove();
     });
 
-    // 滚轮视差：画布随滚动轻微上移，与下方网格自然衔接
+    // 动态创建纯色色卡
+    const cards: HTMLElement[] = [];
+    const palette = shuffle(CARD_COLORS);
+    for (let i = 0; i < cardCount; i++) {
+      const card = document.createElement('div');
+      card.className = 'scatter-item scatter-card';
+      card.style.backgroundColor = palette[i % palette.length];
+      card.setAttribute('aria-hidden', 'true');
+      container.appendChild(card);
+      cards.push(card);
+    }
+
+    // 照片与色卡混洗后统一布局，形成交错堆叠而非「照片一层、色卡一层」
+    const items = shuffle([...chosenPhotos, ...cards]);
+
+    // z-index 序列同样洗牌：堆叠的上下压盖关系每次刷新都不同
+    const zOrder = shuffle(items.map((_, i) => i + 1));
+
+    items.forEach((el, i) => {
+      /**
+       * 圆盘内取点，半径用 pow(random, 0.55) 偏向小值，
+       * 让卡片向中心聚集（中间最密、边缘渐疏），更像真实的一叠牌。
+       */
+      const angle = Math.random() * Math.PI * 2;
+      const r = Math.pow(Math.random(), 0.55);
+
+      const left = 50 + Math.cos(angle) * r * SPREAD_X;
+      const top = 50 + Math.sin(angle) * r * SPREAD_Y;
+
+      el.style.left = `${left.toFixed(2)}%`;
+      el.style.top = `${top.toFixed(2)}%`;
+      el.style.width = `${Math.round(rand(minW, maxW))}px`;
+      el.style.setProperty('--rot', `${rand(-13, 13).toFixed(2)}deg`);
+      el.style.zIndex = String(zOrder[i]);
+      // 入场时间错开一点，撒开的过程更有层次
+      el.style.animationDelay = `${(i * 0.022).toFixed(3)}s`;
+    });
+
+    // 滚轮视差：画布随滚动轻微上移并淡出，与下方网格自然衔接
     let ticking = false;
     const onScroll = () => {
       if (ticking) return;
@@ -99,8 +180,13 @@ const sorted = [...photos].sort((a, b) =>
   }
 </script>
 
-<style>
-  .scattered-container {
+<!--
+  必须 is:global：色卡由上面的脚本动态创建，带不上 Astro 的作用域哈希属性，
+  用默认的 scoped <style> 会完全匹配不到（PhotoSwipe 标题踩过同一个坑）。
+  为避免污染其他页面，所有选择器都用 #scattered 前缀限定，该 ID 只在首页存在。
+-->
+<style is:global>
+  #scattered {
     --scroll: 0;
     position: relative;
     width: 100%;
@@ -109,64 +195,72 @@ const sorted = [...photos].sort((a, b) =>
     background: #0a0a0a;
   }
 
-  /* 初始态：居中收起、透明，等脚本撒开后过渡到位 */
-  .scattered-photo {
+  /* 照片与色卡共用的卡片基础样式：无相框、无内边距、无标题，只有画面本身 */
+  #scattered .scatter-item {
     position: absolute;
     top: 50%;
     left: 50%;
     --rot: 0deg;
-    width: clamp(140px, 20vw, 250px);
-    background: #fff;
-    padding: 10px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
-    transform: rotate(var(--rot)) translateY(calc(var(--scroll) * -40px));
+    aspect-ratio: 4 / 3;
+    /* 暗背景上靠投影区分层次；translate(-50%,-50%) 让 left/top 表示卡片中心 */
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.68);
+    transform: translate(-50%, -50%) rotate(var(--rot))
+      translateY(calc(var(--scroll) * -46px));
     transition:
-      transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-      box-shadow 0.45s ease;
-    text-decoration: none;
-    cursor: pointer;
+      transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.4s ease;
     opacity: 0;
-    animation: scatter-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation: scatter-in 0.62s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    will-change: transform;
+  }
+
+  /* 照片：可点击进详情页 */
+  #scattered .scatter-photo {
+    display: block;
+    cursor: pointer;
+    text-decoration: none;
+    overflow: hidden;
+    background: #141414;
+  }
+
+  #scattered .scatter-photo img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+  }
+
+  /* 色卡：纯色装饰块，不可点击 */
+  #scattered .scatter-card {
+    cursor: default;
+  }
+
+  /* 悬停时抬到最上层并放大摆正，方便看清和点击 */
+  #scattered .scatter-photo:hover,
+  #scattered .scatter-photo:focus-visible,
+  #scattered .scatter-card:hover {
+    transform: translate(-50%, -50%) rotate(0deg) scale(1.14)
+      translateY(calc(var(--scroll) * -46px));
+    z-index: 999 !important;
+    box-shadow: 0 26px 62px rgba(0, 0, 0, 0.82);
+    outline: none;
   }
 
   @keyframes scatter-in {
+    from {
+      opacity: 0;
+    }
     to {
       opacity: 1;
     }
   }
 
-  .scattered-photo:hover,
-  .scattered-photo:focus-visible {
-    transform: rotate(0deg) scale(1.12) translateY(calc(var(--scroll) * -40px));
-    z-index: 100 !important;
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75);
-    outline: none;
-  }
-
-  .scattered-photo img {
-    width: 100%;
-    display: block;
-    aspect-ratio: 4 / 3;
-    object-fit: cover;
-    background: #141414;
-  }
-
-  .photo-caption {
-    display: block;
-    margin-top: 8px;
-    font-size: 13px;
-    color: #333;
-    text-align: center;
-    font-family: 'Inter', 'Noto Sans SC', system-ui, sans-serif;
-    letter-spacing: 0.04em;
-  }
-
-  .scattered-hint {
+  #scattered .scattered-hint {
     position: absolute;
     bottom: 28px;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 101;
+    z-index: 1000;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -179,7 +273,7 @@ const sorted = [...photos].sort((a, b) =>
     animation: hint-float 2.8s ease-in-out infinite;
   }
 
-  .scattered-hint svg {
+  #scattered .scattered-hint svg {
     width: 16px;
     height: 16px;
   }
@@ -194,32 +288,8 @@ const sorted = [...photos].sort((a, b) =>
     }
   }
 
-  /* 小屏改用两列网格，避免绝对定位下照片互相遮挡无法点按 */
   @media (max-width: 640px) {
-    .scattered-container {
-      height: auto;
-      min-height: 100vh;
-      padding: 96px 16px 88px;
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 14px;
-      align-content: start;
-    }
-
-    .scattered-photo {
-      position: static;
-      width: 100%;
-      transform: none;
-      animation: none;
-      opacity: 1;
-    }
-
-    .scattered-photo:hover,
-    .scattered-photo:focus-visible {
-      transform: scale(1.03);
-    }
-
-    .scattered-hint {
+    #scattered .scattered-hint {
       bottom: 20px;
     }
   }
