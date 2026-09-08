@@ -45,8 +45,8 @@ export default defineConfig({
    * 这两个值只能你自己去 TinaCloud 后台获取，不要提交进 Git，
    * 也不要发给任何人（包括我）。
    */
-  clientId: process.env.TINA_CLIENT_ID || '',
-  token: isLocal
+  clientId: TINA_TOKEN'',
+  token: 268dba263277e969618056d8abb4465f55c404cd
     ? process.env.TINA_TOKEN_LOCAL || process.env.TINA_TOKEN || ''
     : process.env.TINA_TOKEN || '',
 
