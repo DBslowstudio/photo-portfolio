@@ -6,10 +6,9 @@
     "node": "22.x"
   },
 "scripts": {
-    "dev": "tinacms dev -c \"astro dev\"",
-    "build": "node scripts/extract-exif.js && tinacms build && astro build",
-    "preview": "astro preview",
-    "astro": "astro"
+  "dev": "tinacms dev -c \"astro dev\"",
+  "build": "tinacms build && astro build",
+  "preview": "astro preview"
 },
   "dependencies": {
     "@astrojs/mdx": "^8.0.0",
