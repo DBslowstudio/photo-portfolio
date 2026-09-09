@@ -56,7 +56,7 @@ export default defineConfig({
    * 两者合起来 = public/admin/，部署后即可用 /admin 访问。
    */
 build: {
-  outputFolder: "admin", // 确保这一行存在
+  outputFolder: "admin",
   publicFolder: "public",
 },
 
