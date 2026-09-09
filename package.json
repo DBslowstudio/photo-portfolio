@@ -7,7 +7,7 @@
   },
 "scripts": {
   "dev": "tinacms dev -c \"astro dev\"",
-  "build": "tinacms build && astro build",
+  "build": "node scripts/extract-exif.js && tinacms build && astro build",
   "preview": "astro preview"
 },
   "dependencies": {
