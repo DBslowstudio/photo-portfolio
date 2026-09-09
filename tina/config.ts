@@ -45,11 +45,8 @@ export default defineConfig({
    * 这两个值只能你自己去 TinaCloud 后台获取，不要提交进 Git，
    * 也不要发给任何人（包括我）。
    */
-  clientId: TINA_TOKEN'',
-  token: 268dba263277e969618056d8abb4465f55c404cd
-    ? process.env.TINA_TOKEN_LOCAL || process.env.TINA_TOKEN || ''
-    : process.env.TINA_TOKEN || '',
-
+ clientId: process.env.TINA_CLIENT_ID || '',
+token: process.env.TINA_TOKEN || '',
   /**
    * 【关键】后台静态产物的输出位置。
    * publicFolder 指 Astro 的静态资源根目录，outputFolder 指其下的子目录，
