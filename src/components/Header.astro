@@ -1,4 +1,7 @@
 ---
+import { Image } from 'astro:assets';
+import logo from '../assets/logo.png';
+
 const currentPath = Astro.url.pathname;
 
 const navItems = [
@@ -13,9 +16,17 @@ const navItems = [
   class="fixed top-0 left-0 right-0 z-50 transition-all duration-500"
 >
   <nav class="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
-    <a href="/" class="text-white text-lg tracking-widest font-light">
-      你的名字
+    <!-- 替换了原来的“你的名字” -->
+    <a href="/" class="flex items-center" aria-label="返回首页">
+      <Image 
+        src={logo} 
+        alt="网站Logo" 
+        width={150} 
+        height={40} 
+        class="h-8 w-auto" 
+      />
     </a>
+
     <ul class="hidden md:flex items-center gap-8">
       {
         navItems.map((item) => (
@@ -30,6 +41,7 @@ const navItems = [
         ))
       }
     </ul>
+
     <button id="menu-toggle" class="md:hidden text-white" aria-label="菜单">
       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -40,6 +52,7 @@ const navItems = [
       </svg>
     </button>
   </nav>
+
   <div
     id="mobile-menu"
     class="hidden md:hidden bg-dark-900/95 backdrop-blur-sm px-6 pb-6"
