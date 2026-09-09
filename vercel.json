@@ -1,45 +1,5 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "astro",
- "buildCommand": "npm run build",
-  "outputDirectory": "dist",
   "rewrites": [
     { "source": "/admin/(.*)", "destination": "/admin/index.html" }
-  ],
-  "cleanUrls": true,
-  "trailingSlash": false,
-
-  "redirects": [
-    {
-      "source": "/(.*)",
-      "has": [{ "type": "host", "value": "www\\.dbslowstudio\\.cn" }],
-      "destination": "https://dbslowstudio.cn/$1",
-      "permanent": true
-    }
-  ],
-
-  "headers": [
-    {
-      "source": "/photos/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
-    },
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "Referrer-Policy",
-          "value": "strict-origin-when-cross-origin"
-        }
-      ]
-    }
   ]
 }
