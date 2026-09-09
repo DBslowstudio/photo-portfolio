@@ -82,6 +82,36 @@ const photos = [...entries].sort((a, b) =>
     text-shadow: 0 2px 18px rgba(0, 0, 0, 0.9);
     margin: 0;
   }
+  /* 引入轻盈的古典英文字体 */
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;1,300&display=swap');
+
+  .hero-slogan {
+    margin-top: 1.5rem; /* 与主标题拉开距离，保持透气 */
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* 居中排列 */
+    gap: 0.75rem; /* 中英文之间的间距 */
+  }
+
+.slogan-cn {
+  /* 方正清刻本悦宋非常古朴，需要加大字号和字间距来体现“大气中正” */
+  font-family: 'FZQingKeBenYueSongS-R-GB', 'Noto Serif SC', serif;
+  font-size: 1.75rem;
+  letter-spacing: 0.5em; /* 增加字间距，让“我｜见”更有呼吸感 */
+  color: #ffffff;
+  font-weight: 400;
+  }
+  
+  .slogan-en {
+    /* 英文使用 Cormorant Garamond，轻盈且周正 */
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.9rem;
+    font-weight: 300;
+    letter-spacing: 0.25em; /* 英文拉宽字距，提升高级感 */
+    color: rgba(255, 255, 255, 0.8); /* 稍微降低透明度，形成主次层级 */
+    text-transform: uppercase; /* 全大写，增强视觉稳定性 */
+  }
+
 
   /* 小屏时散落照片改为网格流式布局，浮层改为顶部静态展示 */
   @media (max-width: 640px) {
