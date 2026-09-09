@@ -1,51 +1,24 @@
+/* === 原版备份 === */
 @import 'tailwindcss';
 @import 'photoswipe/dist/photoswipe.css';
 
-/*
- * 黑金主题 (Black & Gold)
- * 保留了 Tailwind v4 的 @theme 语法，原有的 bg-dark-900 等类名继续生效。
- */
 @theme {
-  --color-dark-900: #010203; /* 极夜黑：主背景色 */
-  --color-dark-800: #1D1D1F; /* 深咖黑：卡片/次级背景 */
-  --color-dark-700: #3B3130; /* 暗咖色：边框/悬停底色 */
-  --color-dark-600: #D3AC2C; /* 亮金色：主色调/高亮/按钮 */
-  
+  --color-dark-900: #0a0a0a;
+  --color-dark-800: #141414;
+  --color-dark-700: #1e1e1e;
+  --color-dark-600: #2a2a2a;
   --font-sans: 'Inter', 'Noto Sans SC', system-ui, sans-serif;
 }
 
-/*
- * Header.astro 的滚动脚本是用 classList.add() 动态挂类的，
- * Tailwind 扫不到字符串形式的类名，这里显式登记。
- * 注意：这里保留了原有的类名结构，确保滚动时导航栏背景变化正常。
- */
 @source inline('{bg-dark-900/90,backdrop-blur-md,shadow-lg,bg-dark-900/95,backdrop-blur-sm}');
 
 @layer base {
-  html {
-    scroll-behavior: smooth;
-  }
-
-  body {
-    @apply bg-dark-900 font-sans antialiased;
-    /* 正文文字使用浅金色，在纯黑背景下阅读更舒适 */
-    @apply text-yellow-100/90; 
-  }
-
-  ::selection {
-    /* 文字选中时的背景色，使用暗金色 */
-    @apply bg-yellow-600/40 text-white;
-  }
+  html { scroll-behavior: smooth; }
+  body { @apply bg-dark-900 text-gray-200 font-sans antialiased; }
+  ::selection { @apply bg-white/20 text-white; }
 }
 
 @layer components {
-  .nav-link {
-    /* 导航链接：默认暗金色，悬停时变成亮金色 */
-    @apply text-sm tracking-widest uppercase text-yellow-600/80 hover:text-dark-600 transition-colors duration-300;
-  }
-
-  .section-title {
-    /* 章节标题：使用亮金色，彰显奢华感 */
-    @apply text-3xl md:text-4xl font-light tracking-wide text-dark-600;
-  }
+  .nav-link { @apply text-sm tracking-widest uppercase text-gray-400 hover:text-white transition-colors duration-300; }
+  .section-title { @apply text-3xl md:text-4xl font-light tracking-wide text-white; }
 }
