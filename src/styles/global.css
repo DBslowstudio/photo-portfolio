@@ -2,23 +2,22 @@
 @import 'photoswipe/dist/photoswipe.css';
 
 /*
- * Tailwind v4 用 @theme 取代了文档里的 tailwind.config.mjs。
- * 文档给的 dark-900/800/700/600 四个色值和 Inter/Noto Sans SC 字体栈
- * 在这里等价声明，bg-dark-900、font-sans 等类名保持原样可用。
+ * 黑金主题 (Black & Gold)
+ * 保留了 Tailwind v4 的 @theme 语法，原有的 bg-dark-900 等类名继续生效。
  */
 @theme {
-  --color-dark-900: #0a0a0a;
-  --color-dark-800: #141414;
-  --color-dark-700: #1e1e1e;
-  --color-dark-600: #2a2a2a;
-
+  --color-dark-900: #010203; /* 极夜黑：主背景色 */
+  --color-dark-800: #1D1D1F; /* 深咖黑：卡片/次级背景 */
+  --color-dark-700: #3B3130; /* 暗咖色：边框/悬停底色 */
+  --color-dark-600: #D3AC2C; /* 亮金色：主色调/高亮/按钮 */
+  
   --font-sans: 'Inter', 'Noto Sans SC', system-ui, sans-serif;
 }
 
 /*
  * Header.astro 的滚动脚本是用 classList.add() 动态挂类的，
- * Tailwind 扫不到字符串形式的类名，这里显式登记，
- * 否则页面滚动时导航栏背景不会变化。
+ * Tailwind 扫不到字符串形式的类名，这里显式登记。
+ * 注意：这里保留了原有的类名结构，确保滚动时导航栏背景变化正常。
  */
 @source inline('{bg-dark-900/90,backdrop-blur-md,shadow-lg,bg-dark-900/95,backdrop-blur-sm}');
 
@@ -28,20 +27,25 @@
   }
 
   body {
-    @apply bg-dark-900 text-gray-200 font-sans antialiased;
+    @apply bg-dark-900 font-sans antialiased;
+    /* 正文文字使用浅金色，在纯黑背景下阅读更舒适 */
+    @apply text-yellow-100/90; 
   }
 
   ::selection {
-    @apply bg-white/20 text-white;
+    /* 文字选中时的背景色，使用暗金色 */
+    @apply bg-yellow-600/40 text-white;
   }
 }
 
 @layer components {
   .nav-link {
-    @apply text-sm tracking-widest uppercase text-gray-400 hover:text-white transition-colors duration-300;
+    /* 导航链接：默认暗金色，悬停时变成亮金色 */
+    @apply text-sm tracking-widest uppercase text-yellow-600/80 hover:text-dark-600 transition-colors duration-300;
   }
 
   .section-title {
-    @apply text-3xl md:text-4xl font-light tracking-wide text-white;
+    /* 章节标题：使用亮金色，彰显奢华感 */
+    @apply text-3xl md:text-4xl font-light tracking-wide text-dark-600;
   }
 }
