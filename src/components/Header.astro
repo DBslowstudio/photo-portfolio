@@ -16,14 +16,14 @@ const navItems = [
   class="fixed top-0 left-0 right-0 z-50 transition-all duration-500"
 >
   <nav class="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
-   <!-- 替换了原来的 Image 组件 -->
+<a href="/" class="flex items-center" aria-label="返回首页">  
+  <!-- 替换了原来的 Image 组件 -->
 <img 
   src={logo.src} 
   alt="网站Logo" 
   class="h-8 w-auto max-w-full object-contain" 
 />
     </a>
-
     <ul class="hidden md:flex items-center gap-8">
       {
         navItems.map((item) => (
