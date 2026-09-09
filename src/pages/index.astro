@@ -25,12 +25,17 @@ const photos = [...entries].sort((a, b) =>
     品牌标题以浮层形式压在散落照片之上，保留原有的品牌展示。
   -->
   <div class="hero-scatter">
-    <ScatteredPhotos photos={photos} />
-    <div class="hero-overlay">
-      <h1>SLOW 慢驶</h1>
-      <p>用影像记录世界</p>
+  <ScatteredPhotos photos={photos} />
+  <div class="hero-overlay">
+    <h1>SLOW 慢驶</h1>
+    
+    <!-- 替换了原来的 <p> 标签 -->
+    <div class="hero-slogan">
+      <span class="slogan-cn">我｜见</span>
+      <span class="slogan-en">A Glimpse. As I See.</span>
     </div>
   </div>
+</div>
 
   <!-- 照片网格：向下滚动无缝衔接 -->
   <div id="gallery">
