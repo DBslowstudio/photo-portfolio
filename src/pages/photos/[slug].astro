@@ -32,14 +32,26 @@ const BASE_URL = import.meta.env.BASE_URL || '/';
 const ensureAbsUrl = (p: string) =>
   p.startsWith('http') || p.startsWith('//') ? p : `${BASE_URL}${p.replace(/^\//, '')}`;
 
-// 灯箱数据
-const lightboxItems = ordered.map((p) => ({
-  src: ensureAbsUrl(p.data.image),
-  width: 1600,
-  height: 1200,
-  alt: p.data.title,
-  title: p.data.title,
-}));
+// 灯箱数据：动态获取每张图片的真实宽高，彻底解决比例错乱问题
+const lightboxItems = await Promise.all(
+  ordered.map(async (p) => {
+    // 确保图片路径是完整 URL
+    const imageUrl = p.data.image.startsWith('http') || p.data.image.startsWith('//') 
+      ? p.data.image 
+      : `${BASE_URL}${p.data.image.replace(/^\//, '')}`;
+
+    // 使用 Astro 的 getImage 获取真实尺寸
+    const img = await getImage({ src: p.data.image });
+    
+    return {
+      src: imageUrl,
+      width: img.attributes.width,
+      height: img.attributes.height,
+      alt: p.data.title,
+      title: p.data.title,
+    };
+  })
+);
 
 const exifRows: Array<{ label: string; value?: string }> = [
   { label: '相机', value: photo.exif?.camera },
