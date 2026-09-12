@@ -11,52 +11,89 @@ import Layout from '../layouts/Layout.astro';
   <section class="max-w-4xl mx-auto px-6 pb-24">
     <h1 class="section-title">关于</h1>
 
-    <div class="mt-12 space-y-8 text-gray-300 leading-relaxed">
-      <div class="space-y-1 text-sm tracking-wide">
-        <p>Don’t panic.</p>
-        <p>ENFP-T (if matters)，偶尔ISFP。</p>
-        <p>河北石家庄 → 四川成都 → 匈牙利布达佩斯 → 中国香港 → 北京海淀</p>
-        <p>宏大叙事后遗症患者。</p>
+    <!-- 顶部区域：左文字，右头像 -->
+    <div class="mt-12 flex flex-col md:flex-row gap-10 items-start">
+      <!-- 左侧文字 -->
+      <div class="flex-1 space-y-8 text-gray-300 leading-relaxed">
+        <!-- 第一段：大字号、加粗 -->
+        <div class="space-y-1 text-lg font-medium tracking-wide text-white">
+          <p>Don’t panic.</p>
+          <p>ENFP-T (if matters)，偶尔ISFP。</p>
+          <p>河北石家庄 → 四川成都 → 匈牙利布达佩斯 → 中国香港 → 北京海淀</p>
+          <p>宏大叙事后遗症患者。</p>
+        </div>
+
+        <!-- 第二段：随笔感，小字号 -->
+        <div class="space-y-6 text-sm">
+          <p>
+            当一周前AI帮我建站的时候，给我的首页起名为：用影像记录世界。<br />
+            太宏大了。
+          </p>
+
+          <p>
+            从17岁开始我辗转了很多地方，但仍称不上走遍了世界，更谈不上记录。事实上除了从iPhone6时代零零散散留下来的几张手机照片，我几乎没碰过摄影。
+          </p>
+
+          <p>
+            2023年春，香港还很冷，几个朋友把相机塞到我手里，说去吧，换一个方式去看世界。<br />
+            便才有了这些快门光圈下的只言片语。
+          </p>
+
+          <p>
+            终有一天，这些时间的切片都会化作数字尘埃，但不重要，某一刻它们已经以我希望的方式被表达出来了。<br />
+            被误会是表达者的宿命，但表达也是。
+          </p>
+
+          <div class="space-y-1 pt-2">
+            <p>于是我把首页的简介改成：A glimpse. As I see. 我，见。</p>
+            <p>我瞥见世界。</p>
+            <p>而世事仁慈，允许我经过。</p>
+          </div>
+        </div>
       </div>
 
-      <p>
-        当一周前AI帮我建站的时候，给我的首页起名为：用影像记录世界。<br />
-        太宏大了。
-      </p>
-
-      <p>
-        从17岁开始我辗转了很多地方，但仍称不上走遍了世界，更谈不上记录。事实上除了从iPhone6时代零零散散留下来的几张手机照片，我几乎没碰过摄影。
-      </p>
-
-      <p>
-        2023年春，香港还很冷，几个朋友把相机塞到我手里，说去吧，换一个方式去看世界。<br />
-        便才有了这些快门光圈下的只言片语。
-      </p>
-
-      <p>
-        终有一天，这些时间的切片都会化作数字尘埃，但不重要，某一刻它们已经以我希望的方式被表达出来了。<br />
-        被误会是表达者的宿命，但表达也是。
-      </p>
-
-      <div class="space-y-1 pt-2">
-        <p>于是我把首页的简介改成：A glimpse. As I see. 我，见。</p>
-        <p>我瞥见世界。</p>
-        <p>而世事仁慈，允许我经过。</p>
+      <!-- 右侧头像框 -->
+      <div class="shrink-0">
+        <img 
+          src="/profile.jpg" 
+          alt="Profile" 
+          class="w-48 h-48 object-cover rounded-lg border border-dark-700 bg-dark-800"
+        />
       </div>
     </div>
 
     <!-- 常用器材 -->
     <section class="mt-16 border-t border-dark-700 pt-10">
-      <h2 class="text-sm tracking-widest uppercase text-gray-500 mb-6">
+      <h2 class="text-sm tracking-widest uppercase text-gray-500 mb-8">
         常用器材
       </h2>
-      <div class="space-y-4 text-gray-300 text-sm leading-relaxed">
-        <p><span class="text-gray-500">中画幅系统</span>：Fujifilm GFX 50S</p>
-        <p><span class="text-gray-500">全画幅系统</span>：Sony RX1R / Nikon D3 (Sold)</p>
-        <p><span class="text-gray-500">半画幅系统</span>：Fujifilm X-T5, X-M5, X-Pro1 / Sony NEX-5T / Sigma SD Quattro / Minolta α7D / Ricoh GR III (Sold)</p>
-        <p><span class="text-gray-500">M43系统</span>：Olympus PEN-F, E-PL7</p>
-        <p><span class="text-gray-500">其他设备</span>：Ricoh GXR (Sold) / Huawei Mate 60 Pro (Sold), Mate 10 Pro / Vivo X200 Ultra</p>
-        <p><span class="text-gray-500">胶片</span>：Nikon F2(Sold), F60 / Olympus mju-I, PEN-D, PEN-F / Rollei 35 / Yashica 35</p>
+      
+      <!-- 恢复网格布局，每个系统单独一行，设备换行显示 -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-x-10 gap-y-8 text-sm leading-relaxed">
+        <div>
+          <p class="text-gray-400 font-medium mb-1">中画幅系统</p>
+          <p class="text-gray-300">Fujifilm GFX 50S</p>
+        </div>
+        <div>
+          <p class="text-gray-400 font-medium mb-1">全画幅系统</p>
+          <p class="text-gray-300">Sony RX1R<br />Nikon D3 (Sold)</p>
+        </div>
+        <div>
+          <p class="text-gray-400 font-medium mb-1">半画幅系统</p>
+          <p class="text-gray-300">Fujifilm X-T5, X-M5, X-Pro1<br />Sony NEX-5T<br />Sigma SD Quattro<br />Minolta α7D<br />Ricoh GR III (Sold)</p>
+        </div>
+        <div>
+          <p class="text-gray-400 font-medium mb-1">M43系统</p>
+          <p class="text-gray-300">Olympus PEN-F<br />Olympus E-PL7</p>
+        </div>
+        <div>
+          <p class="text-gray-400 font-medium mb-1">其他设备</p>
+          <p class="text-gray-300">Ricoh GXR (Sold)<br />Huawei Mate 60 Pro (Sold)<br />Huawei Mate 10 Pro<br />Vivo X200 Ultra</p>
+        </div>
+        <div>
+          <p class="text-gray-400 font-medium mb-1">胶片</p>
+          <p class="text-gray-300">Nikon F2, F60<br />Olympus mju-I, PEN-D, PEN-F<br />Rollei 35<br />Yashica 35</p>
+        </div>
       </div>
     </section>
 
