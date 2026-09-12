@@ -12,14 +12,37 @@ import Layout from '../layouts/Layout.astro';
     <h1 class="section-title">关于</h1>
 
     <div class="mt-12 space-y-8 text-gray-300 leading-relaxed">
-      <p class="text-lg">
-        这里是自我介绍的位置。可以写你从什么时候开始拍照、常驻哪座城市、
-        偏爱哪些题材（风光、人文、纪实、街拍等），以及你希望通过影像表达什么。
-      </p>
+      <div class="space-y-1 text-sm tracking-wide">
+        <p>Don’t panic.</p>
+        <p>ENFP-T (if matters)，偶尔ISFP。</p>
+        <p>河北石家庄 → 四川成都 → 匈牙利布达佩斯 → 中国香港 → 北京海淀</p>
+        <p>宏大叙事后遗症患者。</p>
+      </div>
+
       <p>
-        建议控制在三到五段。摄影作品集的关于页不需要写成简历，
-        读者更想知道的是你按快门时的想法，而不是履历上的头衔。
+        当一周前AI帮我建站的时候，给我的首页起名为：用影像记录世界。<br />
+        太宏大了。
       </p>
+
+      <p>
+        从17岁开始我辗转了很多地方，但仍称不上走遍了世界，更谈不上记录。事实上除了从iPhone6时代零零散散留下来的几张手机照片，我几乎没碰过摄影。
+      </p>
+
+      <p>
+        2023年春，香港还很冷，几个朋友把相机塞到我手里，说去吧，换一个方式去看世界。<br />
+        便才有了这些快门光圈下的只言片语。
+      </p>
+
+      <p>
+        终有一天，这些时间的切片都会化作数字尘埃，但不重要，某一刻它们已经以我希望的方式被表达出来了。<br />
+        被误会是表达者的宿命，但表达也是。
+      </p>
+
+      <div class="space-y-1 pt-2">
+        <p>于是我把首页的简介改成：A glimpse. As I see. 我，见。</p>
+        <p>我瞥见世界。</p>
+        <p>而世事仁慈，允许我经过。</p>
+      </div>
     </div>
 
     <!-- 常用器材 -->
@@ -27,24 +50,13 @@ import Layout from '../layouts/Layout.astro';
       <h2 class="text-sm tracking-widest uppercase text-gray-500 mb-6">
         常用器材
       </h2>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {
-          [
-            { label: '机身', value: 'Sony A7R IV' },
-            { label: '广角变焦', value: '16-35mm f/2.8 GM' },
-            { label: '标准变焦', value: '24-70mm f/2.8 GM' },
-            { label: '长焦变焦', value: '70-200mm f/2.8 GM' },
-            { label: '定焦', value: '35mm f/1.4 GM' },
-            { label: '定焦', value: '50mm f/1.4' },
-          ].map((item) => (
-            <div>
-              <p class="text-gray-500 text-xs uppercase tracking-wider">
-                {item.label}
-              </p>
-              <p class="text-gray-200 mt-1">{item.value}</p>
-            </div>
-          ))
-        }
+      <div class="space-y-4 text-gray-300 text-sm leading-relaxed">
+        <p><span class="text-gray-500">中画幅系统</span>：Fujifilm GFX 50S</p>
+        <p><span class="text-gray-500">全画幅系统</span>：Sony RX1R / Nikon D3 (Sold)</p>
+        <p><span class="text-gray-500">半画幅系统</span>：Fujifilm X-T5, X-M5, X-Pro1 / Sony NEX-5T / Sigma SD Quattro / Minolta α7D / Ricoh GR III (Sold)</p>
+        <p><span class="text-gray-500">M43系统</span>：Olympus PEN-F, E-PL7</p>
+        <p><span class="text-gray-500">其他设备</span>：Ricoh GXR (Sold) / Huawei Mate 60 Pro (Sold), Mate 10 Pro / Vivo X200 Ultra</p>
+        <p><span class="text-gray-500">胶片</span>：Nikon F2(Sold), F60 / Olympus mju-I, PEN-D, PEN-F / Rollei 35 / Yashica 35</p>
       </div>
     </section>
 
