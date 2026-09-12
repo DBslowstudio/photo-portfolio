@@ -12,6 +12,17 @@ const entries = await getCollection('photos');
 const photos = [...entries].sort((a, b) =>
   (b.data.date ?? '').localeCompare(a.data.date ?? ''),
 );
+
+// === [改动1] 首页Grid随机展示99张照片 ===
+// 深拷贝一份，不影响ScatteredPhotos组件（它需要全部照片做散落特效）
+const gridPhotos = [...photos];
+// Fisher-Yates 洗牌算法随机打乱
+for (let i = gridPhotos.length - 1; i > 0; i--) {
+  const j = Math.floor(Math.random() * (i + 1));
+  [gridPhotos[i], gridPhotos[j]] = [gridPhotos[j], gridPhotos[i]];
+}
+// 只取前99张传给Grid
+const randomGridPhotos = gridPhotos.slice(0, 99);
 ---
 
 <Layout
@@ -39,7 +50,8 @@ const photos = [...entries].sort((a, b) =>
 
   <!-- 照片网格：向下滚动无缝衔接 -->
   <div id="gallery">
-    <PhotoGrid photos={photos} />
+    <!-- === [改动2] 把 photos 换成 randomGridPhotos === -->
+    <PhotoGrid photos={randomGridPhotos} />
   </div>
 </Layout>
 
@@ -94,10 +106,10 @@ const photos = [...entries].sort((a, b) =>
   }
 
 .slogan-cn {
-  /* 方正清刻本悦宋非常古朴，需要加大字号和字间距来体现“大气中正” */
+  /* 方正清刻本悦宋非常古朴，需要加大字号和字间距来体现"大气中正" */
   font-family: 'FZQingKeBenYueSongS-R-GB', 'Noto Serif SC', serif;
   font-size: 1.75rem;
-  letter-spacing: 0.5em; /* 增加字间距，让“我｜见”更有呼吸感 */
+  letter-spacing: 0.5em; /* 增加字间距，让"我｜见"更有呼吸感 */
   color: #ffffff;
   font-weight: 400;
   }

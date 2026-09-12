@@ -21,4 +21,14 @@
 @layer components {
   .nav-link { @apply text-sm tracking-widest uppercase text-gray-400 hover:text-white transition-colors duration-300; }
   .section-title { @apply text-3xl md:text-4xl font-light tracking-wide text-white; }
+} /* <-- 注意这里，components 层在这里就已经闭合了 */
+
+/* === 修复 PhotoSwipe 灯箱中竖图被压扁的问题 === */
+/* 放在全局作用域，确保能覆盖 PhotoSwipe 的动态内联样式 */
+.pswp__img {
+  object-fit: contain !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: 100%;
+  max-height: 100%;
 }
