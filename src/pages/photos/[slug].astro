@@ -1,7 +1,6 @@
 ---
 import { getCollection, type CollectionEntry } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
-import QrCode from '../../components/QrCode.astro';
 
 export async function getStaticPaths() {
   const entries = await getCollection('photos');
@@ -54,15 +53,6 @@ const exifRows: Array<{ label: string; value?: string }> = [
 
 const hasExif = exifRows.some((row) => row.value);
 
-/**
- * ⚠️ 二维码编码的是本页网址，而网址来自 astro.config.mjs 的 site 字段
- * （静态构建时 Astro.url 由 site 推导）。部署前必须把 site 改成
- * https://dbslowstudio.cn，否则二维码会指向占位地址、扫出来是错的。
- * 已在此做兜底：site 未配置时回退到相对路径，至少不会编码出坏 URL。
- */
-const canonicalUrl = Astro.site
-  ? new URL(Astro.url.pathname, Astro.site).href
-  : Astro.url.pathname;
 ---
 
 <Layout
@@ -74,7 +64,7 @@ const canonicalUrl = Astro.site
 
   <article class="max-w-6xl mx-auto px-6 pb-24">
     <!-- 主图 + 侧栏（大屏并排，小屏堆叠） -->
-    <div class="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-10 items-start">
+    <div>
       <!-- 主图：点击打开 PhotoSwipe 灯箱 -->
       <figure class="relative bg-dark-800 overflow-hidden group">
         <button
@@ -100,22 +90,6 @@ const canonicalUrl = Astro.site
         </figcaption>
       </figure>
 
-      <!-- 侧栏：二维码。开关与 Logo 都在 TinaCMS 后台可控 -->
-      <aside class="flex flex-col items-center gap-8 lg:sticky lg:top-28">
-        <QrCode
-          text={canonicalUrl}
-          show={photo.showQrCode}
-          logo={photo.qrLogo || ''}
-          size={150}
-        />
-        {
-          photo.date && (
-            <p class="text-gray-500 text-xs tracking-widest uppercase lg:hidden">
-              {photo.date}
-            </p>
-          )
-        }
-      </aside>
     </div>
 
     <!-- 标题与描述 -->

@@ -19,9 +19,6 @@ const photos = defineCollection({
     date: z.string().optional(),
     location: z.string().optional(),
     description: z.string().optional(),
-    // 详情页二维码：开关 + 可选品牌 Logo 叠加
-    showQrCode: z.boolean().default(true),
-    qrLogo: z.string().optional(),
     exif: z
       .object({
         camera: z.string().optional(),

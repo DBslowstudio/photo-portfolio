@@ -109,19 +109,6 @@ build: {
             ui: { component: 'textarea' },
           },
           {
-            type: 'boolean',
-            name: 'showQrCode',
-            label: '显示线下扫码二维码',
-            required: true,
-            description: '关闭后详情页不再渲染二维码',
-          },
-          {
-            type: 'image',
-            name: 'qrLogo',
-            label: '二维码中心 Logo',
-            description: '可选。叠加在二维码中心，建议方形透明 PNG',
-          },
-          {
             type: 'object',
             name: 'exif',
             label: '拍摄参数',
