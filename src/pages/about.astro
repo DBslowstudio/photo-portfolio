@@ -11,19 +11,18 @@ import Layout from '../layouts/Layout.astro';
   <section class="max-w-4xl mx-auto px-6 pb-24">
     <h1 class="section-title">关于</h1>
 
-    <!-- 顶部区域：杂志感悬浮头像 + 文字 -->
     <div class="mt-12 text-gray-300 leading-relaxed">
       
-      <!-- 杂志感头像：左侧悬浮，文字自然环绕 -->
-      <div class="float-left mr-6 mb-4 mt-1">
+      <!-- 杂志感头像：右侧悬浮，与左侧 Don't panic 对齐，文字自然环绕 -->
+      <div class="float-right ml-6 mb-4 mt-1">
         <img 
           src="/profile.jpg" 
           alt="Profile" 
-          class="w-36 h-36 object-cover rounded-md border border-dark-700 bg-dark-800"
+          class="w-40 h-40 object-cover rounded-md border border-dark-700 bg-dark-800"
         />
       </div>
 
-      <!-- 第一段：大字号、加粗，作为引言 -->
+      <!-- 第一段：大字号、加粗，作为引言（与头像左侧对齐） -->
       <div class="space-y-1 text-lg font-medium tracking-wide text-white mb-8">
         <p>Don’t panic.</p>
         <p>ENFP-T (if matters)，偶尔ISFP。</p>
