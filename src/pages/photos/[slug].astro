@@ -184,9 +184,7 @@ const hasExif = exifRows.some((row) => row.value);
     </nav>
   </article>
 
-  <!--
-    PhotoSwipe 数据通过 JSON script 标签传递。
-  -->
+  <!-- PhotoSwipe 数据通过 JSON script 标签传递 -->
   <script
     is:inline
     type="application/json"
@@ -221,6 +219,11 @@ const hasExif = exifRows.some((row) => row.value);
         showHideAnimationType: 'zoom',
         bgOpacity: 0.94,
         padding: { top: 32, bottom: 32, left: 24, right: 24 },
+        // 核心修复：使用 fit 模式，PhotoSwipe 会自动计算屏幕和图片的真实比例
+        // 确保横图横着显，竖图竖着显，绝不压扁，也不会黑屏
+        initialZoomLevel: 'fit',
+        secondaryZoomLevel: 2,
+        maxZoomLevel: 4,
       });
 
       // 灯箱底部显示当前照片标题

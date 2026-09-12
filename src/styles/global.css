@@ -23,8 +23,3 @@
   .section-title { @apply text-3xl md:text-4xl font-light tracking-wide text-white; }
 } /* <-- 注意这里，components 层在这里就已经闭合了 */
 
-/* === 修复 PhotoSwipe 灯箱中竖图被压扁的问题 === */
-.pswp__img {
-  display: block;
-  margin: auto;
-}
