@@ -1,11 +1,10 @@
 ---
-import { getCollection, getImage, type CollectionEntry } from 'astro:content';
+import { getCollection, type CollectionEntry } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
 
 export async function getStaticPaths() {
   const entries = await getCollection('photos');
-  // 排序规则必须和首页网格一致（按拍摄日期倒序），
-  // 否则「上一张 / 下一张」的跳转顺序会和用户浏览顺序对不上。
+  // 详情页按拍摄日期倒序，保证「上一张/下一张」浏览顺序连贯
   const ordered = [...entries].sort((a, b) =>
     (b.data.date ?? '').localeCompare(a.data.date ?? ''),
   );
@@ -28,22 +27,19 @@ const prevPhoto = currentIndex > 0 ? ordered[currentIndex - 1] : null;
 const nextPhoto =
   currentIndex < ordered.length - 1 ? ordered[currentIndex + 1] : null;
 
-// 动态获取当前主图的真实尺寸，用于页面布局
-const mainImage = await getImage({ src: photo.image });
+// 确保图片路径是完整 URL（Vercel 部署后相对路径可能解析失败导致黑屏）
+const BASE_URL = import.meta.env.BASE_URL || '/';
+const ensureAbsUrl = (p: string) =>
+  p.startsWith('http') || p.startsWith('//') ? p : `${BASE_URL}${p.replace(/^\//, '')}`;
 
-// 为灯箱准备数据：动态获取每张图片的真实尺寸，彻底解决写死尺寸导致的黑屏问题
-const lightboxItems = await Promise.all(
-  ordered.map(async (p) => {
-    const img = await getImage({ src: p.data.image });
-    return {
-      src: img.src,
-      width: img.attributes.width,
-      height: img.attributes.height,
-      alt: p.data.title,
-      title: p.data.title,
-    };
-  })
-);
+// 灯箱数据
+const lightboxItems = ordered.map((p) => ({
+  src: ensureAbsUrl(p.data.image),
+  width: 1600,
+  height: 1200,
+  alt: p.data.title,
+  title: p.data.title,
+}));
 
 const exifRows: Array<{ label: string; value?: string }> = [
   { label: '相机', value: photo.exif?.camera },
@@ -76,10 +72,10 @@ const hasExif = exifRows.some((row) => row.value);
           aria-label={`放大查看 ${photo.title}`}
         >
           <img
-            src={mainImage.src}
+            src={photo.image}
             alt={photo.title}
-            width={mainImage.attributes.width}
-            height={mainImage.attributes.height}
+            width="1600"
+            height="1200"
             class="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-[1.02]"
           />
         </button>
@@ -190,8 +186,6 @@ const hasExif = exifRows.some((row) => row.value);
 
   <!--
     PhotoSwipe 数据通过 JSON script 标签传递。
-    不用 define:vars，因为 define:vars 会让 Astro 放弃对脚本做打包，
-    import 'photoswipe/lightbox' 就会失效。
   -->
   <script
     is:inline
