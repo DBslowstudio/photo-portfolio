@@ -1,5 +1,5 @@
 ---
-import { getCollection, type CollectionEntry } from 'astro:content';
+import { getCollection, getImage, type CollectionEntry } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
 
 export async function getStaticPaths() {
@@ -28,19 +28,22 @@ const prevPhoto = currentIndex > 0 ? ordered[currentIndex - 1] : null;
 const nextPhoto =
   currentIndex < ordered.length - 1 ? ordered[currentIndex + 1] : null;
 
-// 灯箱需要每张图的真实尺寸来预留版面，避免打开瞬间跳动
-const IMAGE_WIDTH = 1600;
-const IMAGE_HEIGHT = 1200;
+// 动态获取当前主图的真实尺寸，用于页面布局
+const mainImage = await getImage({ src: photo.image });
 
-const lightboxItems = ordered.map((p) => ({
-  src: p.data.image,
-  width: IMAGE_WIDTH,
-  height: IMAGE_HEIGHT,
-  alt: p.data.title,
-  // title 不是 PhotoSwipe 的标准字段，但 data 对象会原样保留自定义属性，
-  // 下面 uiRegister 里通过 currSlide.data.title 读出来渲染成标题条
-  title: p.data.title,
-}));
+// 为灯箱准备数据：动态获取每张图片的真实尺寸，彻底解决写死尺寸导致的黑屏问题
+const lightboxItems = await Promise.all(
+  ordered.map(async (p) => {
+    const img = await getImage({ src: p.data.image });
+    return {
+      src: img.src,
+      width: img.attributes.width,
+      height: img.attributes.height,
+      alt: p.data.title,
+      title: p.data.title,
+    };
+  })
+);
 
 const exifRows: Array<{ label: string; value?: string }> = [
   { label: '相机', value: photo.exif?.camera },
@@ -52,7 +55,6 @@ const exifRows: Array<{ label: string; value?: string }> = [
 ];
 
 const hasExif = exifRows.some((row) => row.value);
-
 ---
 
 <Layout
@@ -74,10 +76,10 @@ const hasExif = exifRows.some((row) => row.value);
           aria-label={`放大查看 ${photo.title}`}
         >
           <img
-            src={photo.image}
+            src={mainImage.src}
             alt={photo.title}
-            width={IMAGE_WIDTH}
-            height={IMAGE_HEIGHT}
+            width={mainImage.attributes.width}
+            height={mainImage.attributes.height}
             class="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-[1.02]"
           />
         </button>
@@ -89,7 +91,6 @@ const hasExif = exifRows.some((row) => row.value);
           </p>
         </figcaption>
       </figure>
-
     </div>
 
     <!-- 标题与描述 -->
@@ -140,7 +141,7 @@ const hasExif = exifRows.some((row) => row.value);
             )}
           </div>
           <p class="text-gray-600 text-xs mt-6">
-            参数由图片 EXIF 自动提取，缺失项可在后台手动补充。
+            参数由图片 EXIF 自动提取。
           </p>
         </section>
       )
@@ -204,8 +205,6 @@ const hasExif = exifRows.some((row) => row.value);
 
   <script>
     import PhotoSwipeLightbox from 'photoswipe/lightbox';
-    // 不在此处引入 photoswipe.css：global.css 已引入，Layout 全站加载，
-    // 重复引入会让详情页多带一份约 4.5KB 的相同样式。
 
     const dataEl = document.getElementById('lightbox-data');
     const trigger = document.getElementById('lightbox-trigger');
@@ -223,9 +222,6 @@ const hasExif = exifRows.some((row) => row.value);
       };
 
       const lightbox = new PhotoSwipeLightbox({
-        // dataSource 是显式图片数组，无需 gallery/children 这类 DOM 查找选项。
-        // 注意：PhotoSwipe 5 没有 initialPointerIndex 这个选项（写了是静默失效），
-        // 起始图序号由下面 loadAndOpen(startIndex) 传入。
         dataSource: items,
         pswpModule: () => import('photoswipe'),
         showHideAnimationType: 'zoom',
@@ -233,7 +229,7 @@ const hasExif = exifRows.some((row) => row.value);
         padding: { top: 32, bottom: 32, left: 24, right: 24 },
       });
 
-      // 灯箱底部显示当前照片标题。title 是挂在 slide data 上的自定义字段。
+      // 灯箱底部显示当前照片标题
       lightbox.on('uiRegister', () => {
         lightbox.pswp?.ui?.registerElement({
           name: 'photoCaption',
@@ -242,12 +238,11 @@ const hasExif = exifRows.some((row) => row.value);
           onInit: (el, pswp) => {
             const render = () => {
               const data = pswp.currSlide?.data as
+
                 | { title?: string }
                 | undefined;
               el.textContent = data?.title ?? '';
             };
-            // 立即渲染一次：change 事件不保证在初始化时触发，
-            // 只靠监听会让用户点开第一张图时看到空标题条。
             render();
             pswp.on('change', render);
           },
@@ -256,17 +251,13 @@ const hasExif = exifRows.some((row) => row.value);
 
       lightbox.init();
 
-      // 主图不走 PhotoSwipe 默认的缩略图自动发现，手动触发
+      // 主图手动触发灯箱
       trigger.addEventListener('click', () => {
         lightbox.loadAndOpen(startIndex);
       });
     }
   </script>
 
-  <!--
-    is:global 是必需的：这个元素由 PhotoSwipe 在运行时动态创建，
-    带不上 Astro 的作用域哈希属性，用默认的 scoped <style> 会匹配不到。
-  -->
   <style is:global>
     .pswp__photo-caption {
       position: absolute;
