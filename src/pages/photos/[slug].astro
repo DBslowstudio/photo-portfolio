@@ -30,28 +30,16 @@ const nextPhoto =
 // 确保图片路径是完整 URL（Vercel 部署后相对路径可能解析失败导致黑屏）
 const BASE_URL = import.meta.env.BASE_URL || '/';
 const ensureAbsUrl = (p: string) =>
-  p.startsWith('http') || p.startsWith('//') ? p : `${BASE_URL}${p.replace(/^\//, '')}`;
+  p.startsWith('http') || p.startsWith('//') ? p : `${BASE_URL}${p.replace(/^\\//, '')}`;
 
-// 灯箱数据：动态获取每张图片的真实宽高，彻底解决比例错乱问题
-const lightboxItems = await Promise.all(
-  ordered.map(async (p) => {
-    // 确保图片路径是完整 URL
-    const imageUrl = p.data.image.startsWith('http') || p.data.image.startsWith('//') 
-      ? p.data.image 
-      : `${BASE_URL}${p.data.image.replace(/^\//, '')}`;
-
-    // 使用 Astro 的 getImage 获取真实尺寸
-    const img = await getImage({ src: p.data.image });
-    
-    return {
-      src: imageUrl,
-      width: img.attributes.width,
-      height: img.attributes.height,
-      alt: p.data.title,
-      title: p.data.title,
-    };
-  })
-);
+// 灯箱数据（先给占位尺寸，客户端会替换为真实尺寸）
+const lightboxItems = ordered.map((p) => ({
+  src: ensureAbsUrl(p.data.image),
+  width: 1600,
+  height: 1200,
+  alt: p.data.title,
+  title: p.data.title,
+}));
 
 const exifRows: Array<{ label: string; value?: string }> = [
   { label: '相机', value: photo.exif?.camera },
@@ -196,7 +184,10 @@ const hasExif = exifRows.some((row) => row.value);
     </nav>
   </article>
 
-  <!-- PhotoSwipe 数据通过 JSON script 标签传递 -->
+  <!--
+    PhotoSwipe 数据通过 JSON script 标签传递。
+    注意：这里的 width/height 只是占位值，真正的真实尺寸会在客户端 JS 中动态加载图片后替换。
+  -->
   <script
     is:inline
     type="application/json"
@@ -210,61 +201,84 @@ const hasExif = exifRows.some((row) => row.value);
   <script>
     import PhotoSwipeLightbox from 'photoswipe/lightbox';
 
-    const dataEl = document.getElementById('lightbox-data');
-    const trigger = document.getElementById('lightbox-trigger');
+    (async () => {
+      const dataEl = document.getElementById('lightbox-data');
+      const trigger = document.getElementById('lightbox-trigger');
 
-    if (dataEl && trigger && dataEl.textContent) {
-      const { items, startIndex } = JSON.parse(dataEl.textContent) as {
-        items: Array<{
-          src: string;
-          width: number;
-          height: number;
-          alt: string;
-          title: string;
-        }>;
-        startIndex: number;
-      };
+      if (dataEl && trigger && dataEl.textContent) {
+        const { items: rawItems, startIndex } = JSON.parse(dataEl.textContent) as {
+          items: Array<{
+            src: string;
+            width: number;
+            height: number;
+            alt: string;
+            title: string;
+          }>;
+          startIndex: number;
+        };
 
-      const lightbox = new PhotoSwipeLightbox({
-        dataSource: items,
-        pswpModule: () => import('photoswipe'),
-        showHideAnimationType: 'zoom',
-        bgOpacity: 0.94,
-        padding: { top: 32, bottom: 32, left: 24, right: 24 },
-        // 核心修复：使用 fit 模式，PhotoSwipe 会自动计算屏幕和图片的真实比例
-        // 确保横图横着显，竖图竖着显，绝不压扁，也不会黑屏
-        initialZoomLevel: 'fit',
-        secondaryZoomLevel: 2,
-        maxZoomLevel: 4,
-      });
+        // 核心修复：在客户端动态加载每张图片，获取真实宽高比
+        // 这样 PhotoSwipe 拿到的就是正确的横/竖比例，不会再压扁
+        const items = await Promise.all(
+          rawItems.map((item) => {
+            return new Promise((resolve) => {
+              const img = new Image();
+              img.onload = () => {
+                resolve({
+                  ...item,
+                  width: img.naturalWidth,
+                  height: img.naturalHeight,
+                });
+              };
+              img.onerror = () => {
+                // 图片加载失败时 fallback 到竖图比例
+                resolve({ ...item, width: 1200, height: 1600 });
+              };
+              img.src = item.src;
+            });
+          })
+        );
 
-      // 灯箱底部显示当前照片标题
-      lightbox.on('uiRegister', () => {
-        lightbox.pswp?.ui?.registerElement({
-          name: 'photoCaption',
-          className: 'pswp__photo-caption',
-          appendTo: 'wrapper',
-          onInit: (el, pswp) => {
-            const render = () => {
-              const data = pswp.currSlide?.data as
-
-                | { title?: string }
-                | undefined;
-              el.textContent = data?.title ?? '';
-            };
-            render();
-            pswp.on('change', render);
-          },
+        const lightbox = new PhotoSwipeLightbox({
+          dataSource: items,
+          pswpModule: () => import('photoswipe'),
+          showHideAnimationType: 'zoom',
+          bgOpacity: 0.94,
+          padding: { top: 32, bottom: 32, left: 24, right: 24 },
+          // 使用 fit 模式：图片自动适配视口，横图横显竖图竖显
+          initialZoomLevel: 'fit',
+          secondaryZoomLevel: 2,
+          maxZoomLevel: 4,
         });
-      });
 
-      lightbox.init();
+        // 灯箱底部显示当前照片标题
+        lightbox.on('uiRegister', () => {
+          lightbox.pswp?.ui?.registerElement({
+            name: 'photoCaption',
+            className: 'pswp__photo-caption',
+            appendTo: 'wrapper',
+            onInit: (el, pswp) => {
+              const render = () => {
+                const data = pswp.currSlide?.data as
 
-      // 主图手动触发灯箱
-      trigger.addEventListener('click', () => {
-        lightbox.loadAndOpen(startIndex);
-      });
-    }
+                  | { title?: string }
+                  | undefined;
+                el.textContent = data?.title ?? '';
+              };
+              render();
+              pswp.on('change', render);
+            },
+          });
+        });
+
+        lightbox.init();
+
+        // 主图手动触发灯箱
+        trigger.addEventListener('click', () => {
+          lightbox.loadAndOpen(startIndex);
+        });
+      }
+    })();
   </script>
 
   <style is:global>
