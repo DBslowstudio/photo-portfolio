@@ -68,19 +68,18 @@ const hasExif = exifRows.some((row) => row.value);
     <!-- 主图 + 侧栏（大屏并排，小屏堆叠） -->
     <div>
       <!-- 主图：点击打开 PhotoSwipe 灯箱 -->
-      <figure class="relative bg-dark-800 overflow-hidden group">
+      <!-- 修复：容器加 max-h-[85vh] 限制高度，flex 居中；图片用 object-contain 保证不裁切、不溢出 -->
+      <figure class="relative bg-dark-800 overflow-hidden group max-h-[85vh] flex items-center justify-center">
         <button
           id="lightbox-trigger"
           type="button"
-          class="block w-full cursor-zoom-in"
+          class="block cursor-zoom-in"
           aria-label={`放大查看 ${photo.title}`}
         >
           <img
             src={photo.image}
             alt={photo.title}
-            width="1600"
-            height="1200"
-            class="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-[1.02]"
+            class="max-w-full max-h-[80vh] object-contain transition-transform duration-700 group-hover:scale-[1.02]"
           />
         </button>
         <figcaption
