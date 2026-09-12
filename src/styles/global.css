@@ -25,7 +25,6 @@
 
 /* === 修复 PhotoSwipe 灯箱中竖图被压扁的问题 === */
 .pswp__img {
-  object-fit: contain;
-  max-width: 100%;
-  max-height: 100%;
+  display: block;
+  margin: auto;
 }
