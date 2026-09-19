@@ -31,3 +31,6 @@ pnpm-debug.log*
 # tina/tina-lock.json 需要提交（团队共享 schema），但后台产物与运行时缓存不提交
 public/admin/
 tina/__generated__/
+
+# 临时依赖备份目录（本次修复期产物，勿入库）
+node_modules_broken_bak/
