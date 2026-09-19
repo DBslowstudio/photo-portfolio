@@ -18,7 +18,7 @@
     "exif-parser": "^0.1.12",
     "photoswipe": "^5.4.4",
     "tailwindcss": "^4.3.3",
-    "tinacms": "^3.13.0"
+    "tinacms": "3.13.0"
   },
   "allowScripts": {
     "esbuild": true,
@@ -26,8 +26,12 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
-    "@tinacms/cli": "^2.1.1",
+    "@tinacms/cli": "2.7.0",
     "@types/node": "^26.6.2",
     "typescript": "^6.0.3"
+  },
+  "overrides": {
+    "@tinacms/graphql": "2.4.11",
+    "@tinacms/app": "2.5.14"
   }
 }
