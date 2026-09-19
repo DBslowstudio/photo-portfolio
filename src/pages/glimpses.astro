@@ -1,0 +1,164 @@
+---
+import fs from 'node:fs';
+import path from 'node:path';
+import Layout from '../layouts/Layout.astro';
+
+/**
+ * 碎片（Glimpses）：按年份 / 拍摄设备筛选的瀑布流照片墙。
+ *
+ * 与《SLOW慢驶2.0执行手册》1.4 的差异：
+ *
+ * 1. 用 fs 读取索引而非 import。文档写 import photos from '../data/photos-index.json'，
+ *    一旦该文件不存在（全新克隆后未跑索引脚本、或单独执行 astro build）构建会直接失败。
+ *    改成读取失败时回退空数组，页面照常渲染，只是没有照片。
+ *
+ * 2. 套 Layout。文档给的是裸 <div>，会渲染成没有导航和页脚的孤立页面，
+ *    与站内其他页面不一致。
+ *
+ * 3. 链接指向 /photos/{slug} 详情页，而不是文档里的 photo.src（原始 jpg 文件）。
+ *    直接链到 jpg 会绕过灯箱与 EXIF 展示，点进去只剩一张裸图。
+ */
+const indexFile = path.join(process.cwd(), 'src', 'data', 'photos-index.json');
+
+let photos = [];
+try {
+  photos = JSON.parse(fs.readFileSync(indexFile, 'utf8'));
+  if (!Array.isArray(photos)) photos = [];
+} catch {
+  console.warn('[glimpses] 未找到 src/data/photos-index.json，本页将为空。');
+}
+
+// 年份与设备下拉项：去重后年份倒序、设备正序
+const years = [...new Set(photos.map((p) => String(p.year || '')).filter(Boolean))].sort().reverse();
+const brands = [...new Set(photos.map((p) => String(p.brand || '')).filter(Boolean))].sort();
+---
+
+<Layout
+  title="碎片 - SLOW 慢驶摄影画廊"
+  description="按年份与拍摄设备筛选的照片墙。"
+>
+  <div class="h-24"></div>
+
+  <div class="max-w-6xl mx-auto px-6 py-12">
+    <h1 class="section-title">碎片</h1>
+    <p class="text-gray-500 text-sm mt-3 mb-10">
+      共 {photos.length} 张 · 按年份与设备筛选
+    </p>
+
+    <!-- 极简黑金筛选器 -->
+    <div class="flex flex-wrap gap-4 mb-10 text-sm">
+      <div class="relative">
+        <select
+          id="filter-year"
+          class="appearance-none bg-[#0a0a0a] border border-gray-700 text-gray-300 px-4 py-2 pr-8 rounded focus:border-[#C9A558] outline-none cursor-pointer transition-colors"
+        >
+          <option value="">全部年份</option>
+          {years.map((y) => <option value={y}>{y}</option>)}
+        </select>
+        <div
+          class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs"
+        >
+          ▼
+        </div>
+      </div>
+
+      <div class="relative">
+        <select
+          id="filter-brand"
+          class="appearance-none bg-[#0a0a0a] border border-gray-700 text-gray-300 px-4 py-2 pr-8 rounded focus:border-[#C9A558] outline-none cursor-pointer transition-colors"
+        >
+          <option value="">全部设备</option>
+          {brands.map((b) => <option value={b}>{b}</option>)}
+        </select>
+        <div
+          class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs"
+        >
+          ▼
+        </div>
+      </div>
+
+      <span id="filter-count" class="self-center text-gray-600 text-xs"></span>
+    </div>
+
+    {
+      photos.length === 0 ? (
+        <p class="text-gray-500 py-20 text-center">
+          暂无照片索引。请先运行 npm run build 生成 src/data/photos-index.json。
+        </p>
+      ) : (
+        // 原生 CSS 瀑布流网格（此处必须用 JS 注释：HTML 注释在表达式容器内非法）
+        <div id="photo-grid" class="columns-2 md:columns-3 gap-4 space-y-4">
+          {photos.map((photo) => (
+            <a
+              href={`/photos/${photo.slug}`}
+              class="photo-item block group break-inside-avoid"
+              data-year={String(photo.year || '')}
+              data-brand={String(photo.brand || '')}
+            >
+              <div class="overflow-hidden rounded-md border border-transparent group-hover:border-[#C9A558] transition-all">
+                <img
+                  src={photo.src}
+                  alt={photo.title || photo.slug}
+                  loading="lazy"
+                  class="w-full h-auto opacity-90 group-hover:opacity-100 transition-opacity"
+                />
+              </div>
+              <div class="mt-2 mb-1 flex justify-between gap-2 text-xs text-gray-500 group-hover:text-[#C9A558] transition-colors">
+                <span class="truncate">
+                  {[photo.focalLength, photo.aperture].filter(Boolean).join(' · ') || '—'}
+                </span>
+                <span class="shrink-0">{photo.year}</span>
+              </div>
+            </a>
+          ))}
+        </div>
+      )
+    }
+  </div>
+
+  <script>
+    const yearSelect = document.getElementById('filter-year') as HTMLSelectElement | null;
+    const brandSelect = document.getElementById('filter-brand') as HTMLSelectElement | null;
+    const countEl = document.getElementById('filter-count');
+    const items = Array.from(document.querySelectorAll<HTMLElement>('.photo-item'));
+
+    if (yearSelect && brandSelect) {
+      // 初始化：读取 URL 参数（支持刷新与分享筛选状态）
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('year')) yearSelect.value = params.get('year') || '';
+      if (params.has('brand')) brandSelect.value = params.get('brand') || '';
+
+      const filterPhotos = () => {
+        const year = yearSelect.value;
+        const brand = brandSelect.value;
+
+        const next = new URLSearchParams();
+        if (year) next.set('year', year);
+        if (brand) next.set('brand', brand);
+        const qs = next.toString();
+        window.history.replaceState(
+          {},
+          '',
+          `${window.location.pathname}${qs ? `?${qs}` : ''}`,
+        );
+
+        let shown = 0;
+        for (const item of items) {
+          const ok =
+            (!year || item.dataset.year === year) &&
+            (!brand || item.dataset.brand === brand);
+          item.style.display = ok ? 'block' : 'none';
+          if (ok) shown++;
+        }
+        if (countEl) {
+          countEl.textContent =
+            year || brand ? `筛出 ${shown} / ${items.length} 张` : '';
+        }
+      };
+
+      yearSelect.addEventListener('change', filterPhotos);
+      brandSelect.addEventListener('change', filterPhotos);
+      filterPhotos();
+    }
+  </script>
+</Layout>

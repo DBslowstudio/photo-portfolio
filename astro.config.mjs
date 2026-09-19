@@ -6,23 +6,19 @@ import mdx from '@astrojs/mdx';
 // https://astro.build/config
 export default defineConfig({
   /**
-   * 指南 6.1 要求的正式域名。这个值同时决定：
-   * - 详情页二维码扫描后跳转的地址（QrCode 由它推导 canonical URL）
-   * - SEO 的 canonical / sitemap 链接
+   * 指南 6.1 要求的正式域名，决定 SEO 的 canonical / sitemap 链接。
    *
    * ⚠️ 生效前提：必须先在 Vercel 后台 Settings → Domains 绑定该域名，
-   * 并在域名服务商配好 DNS（见部署清单）。域名生效前，二维码会指向一个
-   * 暂时打不开的地址——这是预期行为，DNS 生效后自动正确，无需改代码。
-   * 若想先用 Vercel 的临时网址验证，把下面这行换成 *.vercel.app 地址即可。
+   * 并在域名服务商配好 DNS（见部署清单）。DNS 生效前该地址打不开属预期行为，
+   * 生效后自动正确，无需改代码。若想先用 Vercel 的临时网址验证，
+   * 把下面这行换成 *.vercel.app 地址即可。
    */
   site: 'https://dbslowstudio.cn',
   output: 'static',
   /**
    * 必须与 vercel.json 的 cleanUrls:true + trailingSlash:false 保持一致。
    * 不设这项时 Astro 默认 'ignore'，Astro.url.pathname 会带上尾斜杠，
-   * 导致详情页二维码编码出 https://dbslowstudio.cn/photos/xxx/（带斜杠），
-   * 而线上真实网址不带斜杠 —— 扫码会多一次 301 重定向。
-   * 二维码常印在名片、展签上，重定向一旦失效就完全扫不开，且印出去无法补救。
+   * 而线上真实网址不带斜杠，两者不一致会让分享出去的链接多一次 301 重定向。
    */
   trailingSlash: 'never',
   // mdx() 用于解析 src/content/photos/*.mdx（TinaCMS 的内容载体）
