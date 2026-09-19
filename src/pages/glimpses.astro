@@ -4,23 +4,34 @@ import path from 'node:path';
 import Layout from '../layouts/Layout.astro';
 
 /**
- * 碎片（Glimpses）：按年份 / 拍摄设备筛选的瀑布流照片墙。
+ * 碎片（Glimpses）：全站核心档案库。按年份时间轴浏览，支持
+ * 年份/设备/焦段筛选 + 关键词搜索，全部状态同步 URL 可分享。
  *
- * 与《SLOW慢驶2.0执行手册》1.4 的差异：
+ * 体验约定（2.0）：
+ * - 年份标题 sticky 吸附顶部，滚动时提供时间轴导航
+ * - 卡片行式布局（原生 CSS，零 JS 布局计算），高度统一、宽度随焦段比例，
+ *   形成错落节奏；灯箱看全图，列表裁切不影响原片
+ * - 悬停轻微放大 + 金边高亮；移动端筛选收纳为底部抽屉（纯 CSS checkbox，无 JS）
+ * - 搜索为标题+品牌+地点+标签的关键词匹配，300ms 防抖；
+ *   语义检索需云端服务，与零服务器成本原则冲突，故按约定降维
  *
- * 1. 用 fs 读取索引而非 import。文档写 import photos from '../data/photos-index.json'，
- *    一旦该文件不存在（全新克隆后未跑索引脚本、或单独执行 astro build）构建会直接失败。
- *    改成读取失败时回退空数组，页面照常渲染，只是没有照片。
- *
- * 2. 套 Layout。文档给的是裸 <div>，会渲染成没有导航和页脚的孤立页面，
- *    与站内其他页面不一致。
- *
- * 3. 链接指向 /photos/{slug} 详情页，而不是文档里的 photo.src（原始 jpg 文件）。
- *    直接链到 jpg 会绕过灯箱与 EXIF 展示，点进去只剩一张裸图。
+ * 数据读取用 fs 而非 import JSON：全新克隆未跑索引脚本时页面照常渲染不炸构建。
  */
 const indexFile = path.join(process.cwd(), 'src', 'data', 'photos-index.json');
 
-let photos = [];
+interface PhotoRecord {
+  slug: string;
+  src: string;
+  title?: string;
+  year?: string;
+  brand?: string;
+  focalLength?: string;
+  aperture?: string;
+  location?: string;
+  tags?: string[];
+}
+
+let photos: PhotoRecord[] = [];
 try {
   photos = JSON.parse(fs.readFileSync(indexFile, 'utf8'));
   if (!Array.isArray(photos)) photos = [];
@@ -28,53 +39,103 @@ try {
   console.warn('[glimpses] 未找到 src/data/photos-index.json，本页将为空。');
 }
 
-// 年份与设备下拉项：去重后年份倒序、设备正序
+// 筛选器选项：去重后年份倒序、设备/焦段按数值正序
 const years = [...new Set(photos.map((p) => String(p.year || '')).filter(Boolean))].sort().reverse();
 const brands = [...new Set(photos.map((p) => String(p.brand || '')).filter(Boolean))].sort();
+const focalLens = [...new Set(photos.map((p) => String(p.focalLength || '')).filter(Boolean))]
+  .sort((a, b) => (parseFloat(a) || 0) - (parseFloat(b) || 0));
+
+// 按年份分组：索引按文件名排序，同年份照片在序列中不连续，
+// 必须先聚合再按年份倒序输出（无年份的统一归为「年代不详」排最后）
+const byYear = new Map<string, typeof photos>();
+for (const p of photos) {
+  const y = String(p.year || '') || '__unknown__';
+  if (!byYear.has(y)) byYear.set(y, []);
+  byYear.get(y)!.push(p);
+}
+const groups = [...byYear.entries()]
+  .sort((a, b) => b[0].localeCompare(a[0]))
+  .map(([y, items]) => ({ year: y === '__unknown__' ? '年代不详' : y, items }));
+
+function searchKeyOf(p: PhotoRecord): string {
+  return [p.title, p.brand, p.location, p.year, ...(Array.isArray(p.tags) ? p.tags : [])]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+}
 ---
 
 <Layout
   title="碎片 - SLOW 慢驶摄影画廊"
-  description="按年份与拍摄设备筛选的照片墙。"
+  description="SLOW 慢驶的时间轴与记忆库：海量日常记录，按年份与设备自由筛选。"
 >
   <div class="h-24"></div>
 
   <div class="max-w-6xl mx-auto px-6 py-12">
     <h1 class="section-title">碎片</h1>
-    <p class="text-gray-500 text-sm mt-3 mb-10">
-      共 {photos.length} 张 · 按年份与设备筛选
+    <p class="text-gray-500 text-sm mt-3 mb-8">
+      共 {photos.length} 张 · 时间轴浏览，支持筛选与搜索
     </p>
 
-    <!-- 极简黑金筛选器 -->
-    <div class="flex flex-wrap gap-4 mb-10 text-sm">
-      <div class="relative">
-        <select
-          id="filter-year"
-          class="appearance-none bg-[#0a0a0a] border border-gray-700 text-gray-300 px-4 py-2 pr-8 rounded focus:border-[#C9A558] outline-none cursor-pointer transition-colors"
-        >
-          <option value="">全部年份</option>
-          {years.map((y) => <option value={y}>{y}</option>)}
-        </select>
-        <div
-          class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs"
-        >
-          ▼
-        </div>
-      </div>
+    <input type="checkbox" id="filter-toggle" class="drawer-switch" />
 
-      <div class="relative">
-        <select
-          id="filter-brand"
-          class="appearance-none bg-[#0a0a0a] border border-gray-700 text-gray-300 px-4 py-2 pr-8 rounded focus:border-[#C9A558] outline-none cursor-pointer transition-colors"
-        >
-          <option value="">全部设备</option>
-          {brands.map((b) => <option value={b}>{b}</option>)}
-        </select>
-        <div
-          class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs"
-        >
-          ▼
+    <div class="toolbar mb-10 text-sm">
+      <label for="filter-toggle" class="drawer-open">
+        筛选 · 搜索
+      </label>
+
+      <div class="filters">
+        <div class="relative">
+          <select
+            id="filter-year"
+            class="flt"
+            aria-label="按年份筛选"
+          >
+            <option value="">全部年份</option>
+            {years.map((y) => <option value={y}>{y}</option>)}
+          </select>
+          <div class="caret">▼</div>
         </div>
+
+        <div class="relative">
+          <select
+            id="filter-brand"
+            class="flt"
+            aria-label="按设备筛选"
+          >
+            <option value="">全部设备</option>
+            {brands.map((b) => <option value={b}>{b}</option>)}
+          </select>
+          <div class="caret">▼</div>
+        </div>
+
+        <div class="relative">
+          <select
+            id="filter-focal"
+            class="flt"
+            aria-label="按焦段筛选"
+          >
+            <option value="">全部焦段</option>
+            {focalLens.map((f) => <option value={f}>{f}</option>)}
+          </select>
+          <div class="caret">▼</div>
+        </div>
+
+        <div class="relative grow">
+          <input
+            id="filter-q"
+            type="search"
+            class="flt w-full"
+            placeholder="搜索：地点、标签、标题…"
+            aria-label="搜索照片"
+          />
+        </div>
+
+        <button id="filter-reset" type="button" class="flt-reset" aria-label="清除全部筛选">
+          清除
+        </button>
+
+        <label for="filter-toggle" class="drawer-close">完成</label>
       </div>
 
       <span id="filter-count" class="self-center text-gray-600 text-xs"></span>
@@ -86,55 +147,236 @@ const brands = [...new Set(photos.map((p) => String(p.brand || '')).filter(Boole
           暂无照片索引。请先运行 npm run build 生成 src/data/photos-index.json。
         </p>
       ) : (
-        // 原生 CSS 瀑布流网格（此处必须用 JS 注释：HTML 注释在表达式容器内非法）
-        <div id="photo-grid" class="columns-2 md:columns-3 gap-4 space-y-4">
-          {photos.map((photo) => (
-            <a
-              href={`/photos/${photo.slug}`}
-              class="photo-item block group break-inside-avoid"
-              data-year={String(photo.year || '')}
-              data-brand={String(photo.brand || '')}
-            >
-              <div class="overflow-hidden rounded-md border border-transparent group-hover:border-[#C9A558] transition-all">
-                <img
-                  src={photo.src}
-                  alt={photo.title || photo.slug}
-                  loading="lazy"
-                  class="w-full h-auto opacity-90 group-hover:opacity-100 transition-opacity"
-                />
+        <div id="timeline">
+          {groups.map((g) => (
+            <section class="year-group" data-year={g.year}>
+              <h2 class="year-head">{g.year}</h2>
+              <div class="row-wrap">
+                {g.items.map((photo) => (
+                  <a
+                    href={`/photos/${photo.slug}`}
+                    class="photo-item group"
+                    data-year={String(photo.year || '')}
+                    data-brand={String(photo.brand || '')}
+                    data-focal={String(photo.focalLength || '')}
+                    data-search={searchKeyOf(photo)}
+                  >
+                    <img
+                      src={photo.src}
+                      alt={photo.title || photo.slug}
+                      loading="lazy"
+                      class="ph"
+                    />
+                    <div class="cap">
+                      {[photo.focalLength, photo.aperture].filter(Boolean).join(' · ') || '—'}
+                    </div>
+                  </a>
+                ))}
               </div>
-              <div class="mt-2 mb-1 flex justify-between gap-2 text-xs text-gray-500 group-hover:text-[#C9A558] transition-colors">
-                <span class="truncate">
-                  {[photo.focalLength, photo.aperture].filter(Boolean).join(' · ') || '—'}
-                </span>
-                <span class="shrink-0">{photo.year}</span>
-              </div>
-            </a>
+            </section>
           ))}
+          <p id="empty-state" class="hidden py-24 text-center text-gray-600 text-sm">
+            没有符合条件的照片。<br />试着放宽筛选，或换一个关键词。
+          </p>
         </div>
       )
     }
   </div>
 
+  <style>
+    /* 黑金极简 · 档案库 */
+    .flt {
+      appearance: none;
+      background: #0a0a0a;
+      border: 1px solid #374151;
+      color: #d1d5db;
+      padding: 8px 32px 8px 16px;
+      border-radius: 6px;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      font-size: 13px;
+    }
+    .flt:focus { border-color: #c9a558; }
+    input.flt { cursor: text; padding-right: 16px; }
+    input.flt::-webkit-search-cancel-button {
+      -webkit-appearance: none;
+      width: 12px; height: 12px;
+      background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12"><circle cx="6" cy="6" r="6" fill="%23374151"/><path d="M3.8 3.8l4.4 4.4M8.2 3.8L3.8 8.2" stroke="%239ca3af" stroke-width="1.3"/></svg>') no-repeat center / contain;
+      cursor: pointer;
+    }
+    .caret {
+      pointer-events: none;
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #6b7280;
+      font-size: 10px;
+    }
+    .flt-reset {
+      background: none;
+      border: none;
+      color: #6b7280;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 8px 4px;
+      transition: color 0.2s;
+    }
+    .flt-reset:hover { color: #c9a558; }
+
+    /* 年份时间轴：sticky 吸附。用 JS 脚本设 offsetTop 兜底，
+       这里以 CSS 变量驱动，桌面端生效 */
+    .year-head {
+      position: sticky;
+      top: 72px; /* Header 固定高约 64px + 呼吸位 */
+      z-index: 20;
+      margin: 0;
+      padding: 14px 0 10px;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.22em;
+      color: #c9a558;
+      background: linear-gradient(#0a0a0a 78%, rgba(10, 10, 10, 0.9) 88%, rgba(10, 10, 10, 0));
+      backdrop-filter: blur(6px);
+    }
+
+    /* 行式瀑布流：高度统一、宽度随原片比例，错落由 flex-wrap 自然形成 */
+    .row-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-bottom: 34px;
+    }
+    .photo-item {
+      display: block;
+      width: clamp(150px, 21vw, 260px);
+      text-decoration: none;
+    }
+    .ph {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      display: block;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      opacity: 0.88;
+      transition: opacity 0.35s ease, transform 0.35s ease, border-color 0.35s ease;
+    }
+    .photo-item:hover .ph {
+      opacity: 1;
+      transform: scale(1.025);
+      border-color: rgba(201, 165, 88, 0.55);
+    }
+    .cap {
+      margin-top: 6px;
+      font-size: 11px;
+      color: #6b7280;
+      text-align: center;
+      transition: color 0.3s;
+    }
+    .photo-item:hover .cap { color: #c9a558; }
+    .photo-item[hidden] { display: none; }
+
+    .hidden { display: none; }
+
+    /* 桌面：工具条一行铺开 */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+    .filters {
+      display: contents;
+    }
+    .drawer-switch,
+    .drawer-open,
+    .drawer-close {
+      display: none;
+    }
+
+    /* 移动端：筛选器收进底部抽屉（纯 CSS，checkbox 控制开合） */
+    @media (max-width: 767px) {
+      .year-head { top: 64px; }
+      .photo-item { width: calc((100% - 14px) / 2); }
+
+      .drawer-open {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #d1d5db;
+        border: 1px solid #374151;
+        border-radius: 6px;
+        padding: 8px 14px;
+        font-size: 13px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .drawer-open::after { content: '▼'; font-size: 9px; color: #6b7280; }
+
+      .filters {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 60;
+        background: #111111;
+        border-top: 1px solid #262626;
+        border-radius: 14px 14px 0 0;
+        padding: 18px 18px calc(16px + env(safe-area-inset-bottom));
+        transform: translateY(105%);
+        transition: transform 0.3s ease;
+      }
+      .filters .relative { width: 100%; }
+      .flt { width: 100%; }
+      .drawer-close {
+        display: block;
+        text-align: center;
+        color: #0a0a0a;
+        background: #c9a558;
+        border-radius: 6px;
+        padding: 10px;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .drawer-switch:checked ~ .toolbar .filters {
+        transform: translateY(0);
+      }
+    }
+  </style>
+
   <script>
     const yearSelect = document.getElementById('filter-year') as HTMLSelectElement | null;
     const brandSelect = document.getElementById('filter-brand') as HTMLSelectElement | null;
+    const focalSelect = document.getElementById('filter-focal') as HTMLSelectElement | null;
+    const qInput = document.getElementById('filter-q') as HTMLInputElement | null;
+    const resetBtn = document.getElementById('filter-reset');
     const countEl = document.getElementById('filter-count');
+    const emptyEl = document.getElementById('empty-state');
     const items = Array.from(document.querySelectorAll<HTMLElement>('.photo-item'));
 
-    if (yearSelect && brandSelect) {
-      // 初始化：读取 URL 参数（支持刷新与分享筛选状态）
+    if (yearSelect) {
       const params = new URLSearchParams(window.location.search);
       if (params.has('year')) yearSelect.value = params.get('year') || '';
-      if (params.has('brand')) brandSelect.value = params.get('brand') || '';
+      if (params.has('brand') && brandSelect) brandSelect.value = params.get('brand') || '';
+      if (params.has('focal') && focalSelect) focalSelect.value = params.get('focal') || '';
+      if (params.has('q') && qInput) qInput.value = params.get('q') || '';
 
       const filterPhotos = () => {
         const year = yearSelect.value;
-        const brand = brandSelect.value;
+        const brand = brandSelect?.value || '';
+        const focal = focalSelect?.value || '';
+        const q = (qInput?.value || '').trim().toLowerCase();
 
         const next = new URLSearchParams();
         if (year) next.set('year', year);
         if (brand) next.set('brand', brand);
+        if (focal) next.set('focal', focal);
+        if (q) next.set('q', q);
         const qs = next.toString();
         window.history.replaceState(
           {},
@@ -144,20 +386,46 @@ const brands = [...new Set(photos.map((p) => String(p.brand || '')).filter(Boole
 
         let shown = 0;
         for (const item of items) {
+          const hay = item.dataset.search || '';
           const ok =
             (!year || item.dataset.year === year) &&
-            (!brand || item.dataset.brand === brand);
-          item.style.display = ok ? 'block' : 'none';
+            (!brand || item.dataset.brand === brand) &&
+            (!focal || item.dataset.focal === focal) &&
+            (!q || hay.includes(q));
+          item.hidden = !ok;
           if (ok) shown++;
         }
-        if (countEl) {
-          countEl.textContent =
-            year || brand ? `筛出 ${shown} / ${items.length} 张` : '';
+
+        // 年份组：整组无可见照片时隐藏组头，避免时间轴出现空标题
+        for (const g of document.querySelectorAll<HTMLElement>('.year-group')) {
+          const any = Array.from(g.querySelectorAll<HTMLElement>('.photo-item')).some(
+            (el) => !el.hidden,
+          );
+          g.hidden = !any;
         }
+
+        const active = !!(year || brand || focal || q);
+        if (countEl) countEl.textContent = active ? `筛出 ${shown} / ${items.length} 张` : '';
+        emptyEl?.classList.toggle('hidden', shown !== 0);
       };
 
+      // 搜索防抖 300ms（手写计时器；不为此引入 lodash 运行时依赖）
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      qInput?.addEventListener('input', () => {
+        clearTimeout(timer);
+        timer = setTimeout(filterPhotos, 300);
+      });
+
       yearSelect.addEventListener('change', filterPhotos);
-      brandSelect.addEventListener('change', filterPhotos);
+      brandSelect?.addEventListener('change', filterPhotos);
+      focalSelect?.addEventListener('change', filterPhotos);
+      resetBtn?.addEventListener('click', () => {
+        yearSelect.value = '';
+        if (brandSelect) brandSelect.value = '';
+        if (focalSelect) focalSelect.value = '';
+        if (qInput) qInput.value = '';
+        filterPhotos();
+      });
       filterPhotos();
     }
   </script>

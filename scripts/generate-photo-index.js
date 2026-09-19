@@ -87,6 +87,7 @@ function readCmsMeta() {
         title: d.title,
         description: d.description,
         location: d.location,
+        tags: Array.isArray(d.tags) && d.tags.length ? d.tags : undefined,
         // date 形如 2026-08-15，取年份
         year: typeof d.date === 'string' && /^\d{4}/.test(d.date) ? d.date.slice(0, 4) : '',
         camera: d.exif?.camera,

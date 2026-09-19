@@ -1,0 +1,302 @@
+---
+import { getCollection } from 'astro:content';
+import fs from 'node:fs';
+import path from 'node:path';
+
+/**
+ * 专题暗室页 —— 2.0 轨道二的观展体验。
+ *
+ * 设计约束（来自需求清单，全部落实在下方代码）：
+ * - 全屏沉浸：纯黑背景、照片居中、大量留白；本页面不套全站 Header/Footer，
+ *   用独立极简壳（仅左上角一个退出链接），避免导航条破坏暗室感
+ * - 照片按展线顺序逐张浏览，切换用克制的淡入淡出
+ * - 键盘 ←/→ 翻页；手机左右滑动翻页
+ * - 标题与地点悬停（桌面）/长按（手机）才出现，平时不打扰观看
+ * - 不自动播放、无弹窗
+ *
+ * 数据契约：展线引用 src/content/photos 的 slug；引用到不存在的 slug 时
+ * 跳过该项而不是报错（后台填错一个文件名不应让线上 500）。
+ */
+export async function getStaticPaths() {
+  const projects = await getCollection('projects');
+  return projects.map((p) => ({ params: { slug: p.id }, props: { project: p } }));
+}
+
+const { project } = Astro.props;
+
+// 索引用于补 EXIF 展示（focalLength/aperture 等），与碎片区同源
+let indexBySlug = new Map();
+try {
+  const idxFile = path.join(process.cwd(), 'src', 'data', 'photos-index.json');
+  for (const it of JSON.parse(fs.readFileSync(idxFile, 'utf8'))) {
+    indexBySlug.set(it.slug, it);
+  }
+} catch {
+  /* 索引缺失时元数据条留空，不阻塞渲染 */
+}
+
+const allPhotos = await getCollection('photos');
+const photoById = new Map(
+  allPhotos.map((x) => [x.id.replace(/\.(mdx?|md)$/, ''), x]),
+);
+
+const slides = [];
+const seen = new Set();
+for (const ref of project.data.photos || []) {
+  const key = String(ref).replace(/\.(mdx?|md)$/, '');
+  if (seen.has(key)) continue;
+  seen.add(key);
+  const entry = photoById.get(key);
+  if (!entry) continue; // 引用失效：跳过而非失败
+  const idx = indexBySlug.get(key) || {};
+  slides.push({
+    src: entry.data.image || `/photos/${key}`,
+    title: entry.data.title || '',
+    location: entry.data.location || idx.location || '',
+    meta: [idx.focalLength, idx.aperture].filter(Boolean).join(' · '),
+    year: idx.year || (entry.data.date ? String(entry.data.date).slice(0, 4) : ''),
+  });
+}
+
+const nav = (await getCollection('projects'))
+  .sort((a, b) => String(b.data.date || '').localeCompare(String(a.data.date || '')))
+  .map((p) => ({ id: p.id, title: p.data.title }));
+const cur = nav.findIndex((n) => n.id === project.id);
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{project.data.title} - 专题 - SLOW 慢驶</title>
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body class="darkroom">
+    <header class="dr-top">
+      <a href="/projects" class="dr-exit">← 退出暗室</a>
+      <div class="dr-title">{project.data.title}</div>
+      <div class="dr-progress" id="dr-progress">1 / {slides.length}</div>
+    </header>
+
+    <main class="dr-stage" id="dr-stage" tabindex="-1" aria-label="照片浏览区，左右方向键或滑动翻页">
+      {
+        slides.map((s, i) => (
+          <figure class="dr-slide" data-index={i} aria-hidden={i === 0 ? 'false' : 'true'}>
+            <img src={s.src} alt={s.title || project.data.title} draggable="false" />
+            <figcaption class="dr-caption">
+              {s.title && <div class="dr-cap-title">{s.title}</div>}
+              {(s.location || s.year) && (
+                <div class="dr-cap-sub">
+                  {[s.location, s.year].filter(Boolean).join(' · ')}
+                </div>
+              )}
+              {s.meta && <div class="dr-cap-meta">{s.meta}</div>}
+            </figcaption>
+          </figure>
+        ))
+      }
+      {slides.length === 0 && (
+        <p class="dr-empty">这个专题还没有可用的照片——后台「照片清单」里引用的名字需要在碎片区真实存在。</p>
+      )}
+    </main>
+
+    <nav class="dr-bottom">
+      {
+        cur > 0 && (
+          <a class="dr-other" href={`/projects/${nav[cur - 1].id}`}>
+            上一个专题：{nav[cur - 1].title}
+          </a>
+        )
+      }
+      {
+        cur >= 0 && cur < nav.length - 1 && (
+          <a class="dr-other" href={`/projects/${nav[cur + 1].id}`}>
+            下一个专题：{nav[cur + 1].title}
+          </a>
+        )
+      }
+    </nav>
+
+    <style is:global>
+      /* 黑金极简 · 暗室。刻意不引全站 CSS：纯黑、零装饰、无滚动条 */
+      .darkroom {
+        margin: 0;
+        background: #0a0a0a;
+        color: #e5e5e5;
+        font-family: 'Inter', 'Noto Sans SC', system-ui, sans-serif;
+        height: 100dvh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .dr-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 24px 0;
+        gap: 16px;
+      }
+      .dr-exit {
+        color: #6b7280;
+        text-decoration: none;
+        font-size: 13px;
+        white-space: nowrap;
+        transition: color 0.3s;
+      }
+      .dr-exit:hover { color: #c9a558; }
+      .dr-title {
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        color: #9ca3af;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .dr-progress { font-size: 12px; color: #4b5563; white-space: nowrap; }
+
+      .dr-stage {
+        position: relative;
+        flex: 1;
+        margin: 0 5vw;
+        outline: none;
+      }
+      .dr-slide {
+        position: absolute;
+        inset: 0;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.55s ease;
+      }
+      .dr-slide.is-active { opacity: 1; visibility: visible; }
+      .dr-slide img {
+        max-width: 100%;
+        max-height: calc(100dvh - 190px);
+        width: auto;
+        height: auto;
+        display: block;
+        -webkit-user-drag: none;
+        user-select: none;
+      }
+
+      /* 元数据默认隐形：桌面悬停、手机长按才出现 */
+      .dr-caption {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 12px;
+        text-align: center;
+        opacity: 0;
+        transition: opacity 0.4s ease;
+        pointer-events: none;
+        padding: 0 16px;
+      }
+      .dr-stage:hover .dr-slide.is-active .dr-caption,
+      .dr-slide.is-active.dr-peek .dr-caption { opacity: 1; }
+      .dr-cap-title { font-size: 14px; color: #d1d5db; }
+      .dr-cap-sub { font-size: 12px; color: #6b7280; margin-top: 3px; }
+      .dr-cap-meta { font-size: 11px; color: #4b5563; margin-top: 3px; letter-spacing: 0.05em; }
+
+      .dr-empty {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6b7280;
+        font-size: 14px;
+        text-align: center;
+        line-height: 2;
+      }
+
+      .dr-bottom {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 10px 24px calc(14px + env(safe-area-inset-bottom));
+        min-height: 20px;
+      }
+      .dr-other {
+        font-size: 12px;
+        color: #4b5563;
+        text-decoration: none;
+        transition: color 0.3s;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 45%;
+      }
+      .dr-other:hover { color: #c9a558; }
+
+      @media (max-width: 640px) {
+        .dr-top { padding: 12px 14px 0; }
+        .dr-title { display: none; }
+        .dr-stage { margin: 0 3vw; }
+        .dr-slide img { max-height: calc(100dvh - 160px); }
+        /* 移动端没有悬停：元数据以极淡常驻，长按短暂加重 */
+        .dr-caption { opacity: 0.001; }
+        .dr-slide.is-active.dr-peek .dr-caption { opacity: 0.95; }
+      }
+    </style>
+
+    <script is:inline>
+      (() => {
+        const stage = document.getElementById('dr-stage');
+        if (!stage) return;
+        const slides = Array.from(stage.querySelectorAll('.dr-slide'));
+        const progress = document.getElementById('dr-progress');
+        const total = slides.length;
+        let cur = 0;
+
+        // 进度写入地址栏 hash：刷新/分享回到同一张
+        const fromHash = parseInt((location.hash.match(/^#(\d+)$/) || [])[1], 10);
+        if (Number.isInteger(fromHash) && fromHash >= 0 && fromHash < total) cur = fromHash;
+
+        function show(i) {
+          if (!total) return;
+          cur = Math.max(0, Math.min(total - 1, i));
+          slides.forEach((s, k) => {
+            s.classList.toggle('is-active', k === cur);
+            s.setAttribute('aria-hidden', k === cur ? 'false' : 'true');
+          });
+          if (progress) progress.textContent = `${cur + 1} / ${total}`;
+          history.replaceState(null, '', '#' + cur);
+        }
+        show(cur);
+
+        // 键盘：←/→ 翻页（Home/End 跳首尾）
+        window.addEventListener('keydown', (e) => {
+          if (e.key === 'ArrowRight') { e.preventDefault(); show(cur + 1); }
+          else if (e.key === 'ArrowLeft') { e.preventDefault(); show(cur - 1); }
+          else if (e.key === 'Home') show(0);
+          else if (e.key === 'End') show(total - 1);
+        });
+
+        // 触屏：左右滑动翻页；长按露出元数据
+        let x0 = null, y0 = null, peekTimer = null;
+        stage.addEventListener('touchstart', (e) => {
+          if (e.touches.length !== 1) return;
+          x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+          peekTimer = setTimeout(() => slides[cur]?.classList.add('dr-peek'), 450);
+        }, { passive: true });
+        stage.addEventListener('touchmove', () => {
+          clearTimeout(peekTimer);
+        }, { passive: true });
+        stage.addEventListener('touchend', (e) => {
+          clearTimeout(peekTimer);
+          if (x0 === null) return;
+          const dx = e.changedTouches[0].clientX - x0;
+          const dy = e.changedTouches[0].clientY - y0;
+          x0 = null;
+          slides[cur]?.classList.remove('dr-peek');
+          if (Math.abs(dx) > 44 && Math.abs(dx) > Math.abs(dy) * 1.4) show(cur + (dx < 0 ? 1 : -1));
+        }, { passive: true });
+      })();
+    </script>
+  </body>
+</html>

@@ -18,6 +18,8 @@ const photos = defineCollection({
     // 拍摄日期，后台可改；缺失时详情页不显示日期
     date: z.string().optional(),
     location: z.string().optional(),
+    // 2.0 搜索用：自由标签（如"下雨天""街头""夜景"），后台可填
+    tags: z.array(z.string()).optional(),
     description: z.string().optional(),
     exif: z
       .object({
@@ -32,4 +34,22 @@ const photos = defineCollection({
   }),
 });
 
-export const collections = { photos };
+/**
+ * 专题集合（2.0 轨道二 · 策展区）：数据源 src/content/projects/*.md。
+ * 零侵入原则：纯新增集合，photos 及 1.0 一切不受影响。
+ * photos 引用碎片的 slug 列表——专题不复制文件，只组织叙事顺序；
+ * 引用的 slug 在碎片区不存在时，详情页会跳过该项而不是构建失败。
+ */
+const projects = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/content/projects' }),
+  schema: z.object({
+    title: z.string(),
+    // 专题一句话简介，列表页展示
+    summary: z.string().optional(),
+    date: z.string().optional(),
+    cover: z.string().optional(),
+    photos: z.array(z.string()).default([]),
+  }),
+});
+
+export const collections = { photos, projects };

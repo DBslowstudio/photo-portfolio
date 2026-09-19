@@ -27,6 +27,7 @@
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
     "@tinacms/cli": "^2.1.1",
+    "@types/node": "^26.6.2",
     "typescript": "^6.0.3"
   }
 }

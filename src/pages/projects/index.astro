@@ -1,0 +1,94 @@
+---
+import { getCollection } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+
+/**
+ * 专题（Projects）列表页 —— 2.0 轨道二的入口。
+ * 零侵入：纯新增路由，不触碰首页/关于/联系/photos 任何现有页面。
+ * 视觉沿用黑金极简：深黑底、金色点缀、大留白。
+ */
+const projects = (await getCollection('projects')).sort((a, b) =>
+  String(b.data.date || '').localeCompare(String(a.data.date || '')),
+);
+
+// slug -> 照片条目。展线引用与 mdx 文件名可能带/不带扩展名，这里统一去扩展名建键
+const photosById = new Map(
+  (await getCollection('photos')).map((p) => [p.id.replace(/\.(mdx?|md)$/, ''), p]),
+);
+
+// 封面：优先后台设定；否则取展线第一张的真实 image 路径（不猜扩展名）
+function coverOf(p: (typeof projects)[number]): string {
+  if (p.data.cover) return p.data.cover;
+  for (const ref of p.data.photos) {
+    const e = photosById.get(ref.replace(/\.(mdx?|md)$/, ''));
+    if (e?.data.image) return e.data.image;
+  }
+  return '';
+}
+---
+
+<Layout
+  title="专题 - SLOW 慢驶摄影画廊"
+  description="精选策展区：从碎片中提炼的成体系创作，按策展顺序逐一观看。"
+>
+  <div class="h-24"></div>
+
+  <div class="max-w-6xl mx-auto px-6 py-12">
+    <h1 class="section-title">专题</h1>
+    <p class="text-gray-500 text-sm mt-3 mb-12">
+      {projects.length > 0 ? `${projects.length} 个专题 · 点击进入暗室` : '策展会陆续在这里开始'}
+    </p>
+
+    {
+      projects.length === 0 ? (
+        <div class="py-24 text-center">
+          <p class="text-gray-500 text-sm">
+            还没有专题。在 /admin 后台「专题策展」里
+            <br />
+            给碎片区按顺序编册，这里就会亮起第一盏灯。
+          </p>
+        </div>
+      ) : (
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+          {projects.map((p) => {
+            const cover = coverOf(p);
+            return (
+              <a
+                href={`/projects/${p.id}`}
+                class="group block"
+              >
+                <div class="relative overflow-hidden rounded-md border border-transparent group-hover:border-[#C9A558] transition-colors aspect-[4/3] bg-dark-800">
+                  {cover ? (
+                    <img
+                      src={cover}
+                      alt={p.data.title}
+                      loading="lazy"
+                      class="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-[1.02] transition-all duration-500"
+                    />
+                  ) : (
+                    <div class="absolute inset-0 flex items-center justify-center text-gray-700 text-sm">
+                      暂无封面
+                    </div>
+                  )}
+                </div>
+                <div class="mt-4 flex items-baseline justify-between gap-4">
+                  <h2 class="text-lg text-gray-200 group-hover:text-[#C9A558] transition-colors">
+                    {p.data.title}
+                  </h2>
+                  <span class="shrink-0 text-xs text-gray-600">
+                    {p.data.photos.length} 张{p.data.date ? ` · ${p.data.date}` : ''}
+                  </span>
+                </div>
+                {p.data.summary && (
+                  <p class="mt-1.5 text-sm text-gray-500 leading-relaxed">
+                    {p.data.summary}
+                  </p>
+                )}
+              </a>
+            );
+          })}
+        </div>
+      )
+    }
+  </div>
+</Layout>

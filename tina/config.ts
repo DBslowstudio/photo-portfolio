@@ -104,6 +104,13 @@ build: {
           },
           {
             type: 'string',
+            name: 'tags',
+            label: '标签',
+            description: '用于搜索，如「下雨天」「街头」「夜景」，回车逐个添加',
+            list: true,
+          },
+          {
+            type: 'string',
             name: 'description',
             label: '照片简介',
             ui: { component: 'textarea' },
@@ -121,6 +128,46 @@ build: {
               { type: 'string', name: 'shutterSpeed', label: '快门' },
               { type: 'string', name: 'iso', label: 'ISO' },
             ],
+          },
+        ],
+      },
+      {
+        name: 'projects',
+        label: '专题策展',
+        path: 'src/content/projects',
+        format: 'md',
+        fields: [
+          {
+            type: 'string',
+            name: 'title',
+            label: '专题标题',
+            isTitle: true,
+            required: true,
+          },
+          {
+            type: 'string',
+            name: 'summary',
+            label: '一句话简介',
+            ui: { component: 'textarea' },
+          },
+          {
+            type: 'string',
+            name: 'date',
+            label: '发布日期',
+            description: '格式 YYYY-MM-DD',
+          },
+          {
+            type: 'image',
+            name: 'cover',
+            label: '封面图',
+          },
+          {
+            type: 'string',
+            name: 'photos',
+            label: '照片清单（按观展顺序）',
+            description:
+              '逐行填入碎片区照片的文件名（不含路径与扩展名），顺序即展线。不存在的条目会被跳过',
+            list: true,
           },
         ],
       },
