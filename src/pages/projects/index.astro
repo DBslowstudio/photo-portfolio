@@ -5,7 +5,13 @@ import Layout from '../../layouts/Layout.astro';
 /**
  * 专题（Projects）列表页 —— 2.0 轨道二的入口。
  * 零侵入：纯新增路由，不触碰首页/关于/联系/photos 任何现有页面。
- * 视觉沿用黑金极简：深黑底、金色点缀、大留白。
+ *
+ * 版式移植自美术馆图录式（xuchenguo.com Work 页）的社论行布局：
+ * 每个专题一行，左列标题+缩略图条，右列自述，发丝线分隔，
+ * 悬停仅一层极淡底光 + 标题转金。深色底版，金色即它的强调色。
+ *
+ * 本轮只改本页渲染层；上方数据逻辑（projects / photosById / coverOf）
+ * 一字未动，schema、后台、暗室页、碎片页均不受影响。
  */
 const projects = (await getCollection('projects')).sort((a, b) =>
   String(b.data.date || '').localeCompare(String(a.data.date || '')),
@@ -24,6 +30,19 @@ function coverOf(p: (typeof projects)[number]): string {
     if (e?.data.image) return e.data.image;
   }
   return '';
+}
+
+// 缩略图条：展线前 3 张的真实图片路径（顺序即策展顺序的一部分）
+function stripOf(p: (typeof projects)[number]): string[] {
+  const out: string[] = [];
+  if (p.data.cover) out.push(p.data.cover);
+  for (const ref of p.data.photos) {
+    const e = photosById.get(ref.replace(/\.(mdx?|md)$/, ''));
+    const src = e?.data.image;
+    if (src && !out.includes(src)) out.push(src);
+    if (out.length >= 3) break;
+  }
+  return out;
 }
 ---
 
@@ -49,41 +68,31 @@ function coverOf(p: (typeof projects)[number]): string {
           </p>
         </div>
       ) : (
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+        <div class="work-list">
           {projects.map((p) => {
-            const cover = coverOf(p);
+            const strip = stripOf(p);
             return (
-              <a
-                href={`/projects/${p.id}`}
-                class="group block"
-              >
-                <div class="relative overflow-hidden rounded-md border border-transparent group-hover:border-[#C9A558] transition-colors aspect-[4/3] bg-dark-800">
-                  {cover ? (
-                    <img
-                      src={cover}
-                      alt={p.data.title}
-                      loading="lazy"
-                      class="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-[1.02] transition-all duration-500"
-                    />
-                  ) : (
-                    <div class="absolute inset-0 flex items-center justify-center text-gray-700 text-sm">
-                      暂无封面
+              <a href={`/projects/${p.id}`} class="work-row group">
+                <div class="w-left">
+                  <h2 class="w-title">{p.data.title}</h2>
+                  <span class="w-meta">
+                    {p.data.photos.length} 张{p.data.date ? ` · ${p.data.date}` : ''}
+                  </span>
+                  {strip.length > 0 && (
+                    <div class="w-strip">
+                      {strip.map((src, i) => (
+                        <img src={src} alt={i === 0 ? p.data.title : ''} loading="lazy" />
+                      ))}
                     </div>
                   )}
                 </div>
-                <div class="mt-4 flex items-baseline justify-between gap-4">
-                  <h2 class="text-lg text-gray-200 group-hover:text-[#C9A558] transition-colors">
-                    {p.data.title}
-                  </h2>
-                  <span class="shrink-0 text-xs text-gray-600">
-                    {p.data.photos.length} 张{p.data.date ? ` · ${p.data.date}` : ''}
-                  </span>
+                <div class="w-right">
+                  {p.data.summary ? (
+                    <p class="w-blurb">{p.data.summary}</p>
+                  ) : (
+                    <span class="w-enter">进入暗室 →</span>
+                  )}
                 </div>
-                {p.data.summary && (
-                  <p class="mt-1.5 text-sm text-gray-500 leading-relaxed">
-                    {p.data.summary}
-                  </p>
-                )}
               </a>
             );
           })}
@@ -91,4 +100,88 @@ function coverOf(p: (typeof projects)[number]): string {
       )
     }
   </div>
+
+  <style>
+    /* 社论行布局：图录式，黑金版 */
+    .work-list {
+      border-top: 1px solid rgb(255 255 255 / 0.16);
+    }
+    .work-row {
+      display: grid;
+      grid-template-columns: minmax(220px, 32%) 1fr;
+      gap: clamp(20px, 4vw, 72px);
+      padding: clamp(28px, 4vw, 52px) 0;
+      border-bottom: 1px solid rgb(255 255 255 / 0.1);
+      align-items: start;
+      transition: background-color 0.3s;
+      text-decoration: none;
+    }
+    .work-row:hover {
+      background: rgb(255 255 255 / 0.02);
+    }
+    .w-left {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .w-title {
+      font-size: clamp(20px, 2.4vw, 34px);
+      font-weight: 300;
+      letter-spacing: 0.04em;
+      line-height: 1.1;
+      color: #e5e5e5;
+      transition: color 0.3s;
+    }
+    .work-row:hover .w-title {
+      color: #c9a558;
+    }
+    .w-meta {
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #6b7280;
+    }
+    /* 缩略条：展线前三张，发丝间距，微光过渡 */
+    .w-strip {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .w-strip img {
+      width: 84px;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      border-radius: 2px;
+      opacity: 0.72;
+      transition: opacity 0.35s;
+    }
+    .work-row:hover .w-strip img {
+      opacity: 1;
+    }
+    .w-right {
+      padding-top: 6px;
+      min-width: 0;
+    }
+    .w-blurb {
+      color: #a3a3a3;
+      font-size: 14px;
+      line-height: 1.9;
+      max-width: 460px;
+    }
+    .w-enter {
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      color: #525252;
+      transition: color 0.3s;
+    }
+    .work-row:hover .w-enter {
+      color: #c9a558;
+    }
+    @media (max-width: 767px) {
+      .work-row {
+        grid-template-columns: 1fr;
+        gap: 18px;
+      }
+    }
+  </style>
 </Layout>
