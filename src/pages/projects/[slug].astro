@@ -55,6 +55,7 @@ for (const ref of project.data.photos || []) {
     location: entry.data.location || idx.location || '',
     meta: [idx.focalLength, idx.aperture].filter(Boolean).join(' · '),
     year: idx.year || (entry.data.date ? String(entry.data.date).slice(0, 4) : ''),
+    desc: entry.data.description || '',
   });
 }
 
@@ -77,7 +78,7 @@ const cur = nav.findIndex((n) => n.id === project.id);
     <header class="dr-top">
       <a href="/projects" class="dr-exit">← 退出暗室</a>
       <div class="dr-title">{project.data.title}</div>
-      <div class="dr-progress" id="dr-progress">1 / {slides.length + 1}</div>
+      <div class="dr-progress" id="dr-progress">序言 · 共 {slides.length} 张</div>
     </header>
 
     <main class="dr-stage" id="dr-stage" tabindex="-1" aria-label="照片浏览区，左右方向键或滑动翻页">
@@ -109,7 +110,7 @@ const cur = nav.findIndex((n) => n.id === project.id);
         slides.map((s, i) => (
           <figure class="dr-slide" data-index={i} aria-hidden={i === 0 ? 'false' : 'true'}>
             <img src={s.src} alt={s.title || project.data.title} draggable="false" />
-            <figcaption class="dr-caption">
+            <figcaption class:list={["dr-caption", s.desc && "has-desc"]}>
               {s.title && <div class="dr-cap-title">{s.title}</div>}
               {(s.location || s.year) && (
                 <div class="dr-cap-sub">
@@ -117,6 +118,12 @@ const cur = nav.findIndex((n) => n.id === project.id);
                 </div>
               )}
               {s.meta && <div class="dr-cap-meta">{s.meta}</div>}
+              {s.desc && (
+                <div class="dr-cap-desc">{s.desc}</div>
+              )}
+              {s.desc && (
+                <p class="dr-cap-hint" aria-hidden="true">⌄ 滚动看配文</p>
+              )}
             </figcaption>
           </figure>
         ))
@@ -127,7 +134,7 @@ const cur = nav.findIndex((n) => n.id === project.id);
       <!-- 纯鼠标辅助：金色箭头 + 键位提示；初始 is-off，由脚本按帧同步显隐 -->
       <button class="dr-arrow dr-arrow--prev is-off" id="dr-prev" type="button" aria-label="上一张">‹</button>
       <button class="dr-arrow dr-arrow--next is-off" id="dr-next" type="button" aria-label="下一张">›</button>
-      <p class="dr-keyhint is-off" id="dr-keyhint">← → 键翻页 · 或点两侧箭头</p>
+      <p class="dr-keyhint is-off" id="dr-keyhint">← → 翻页 · ↓ 或滚动看配文</p>
     </main>
 
     <nav class="dr-bottom">
@@ -270,23 +277,67 @@ const cur = nav.findIndex((n) => n.id === project.id);
         user-select: none;
       }
 
-      /* 元数据默认隐形：桌面悬停、手机长按才出现 */
+      /* caption 常驻：默认半隐(dim)，滚动/下滑/点击配文区后提亮展开。
+         与主页 hero 的"向下滚动"同一语言：藏两行作暗示，滚动即提亮 */
       .dr-caption {
         position: absolute;
         left: 0;
         right: 0;
         bottom: 12px;
         text-align: center;
-        opacity: 0;
-        transition: opacity 0.4s ease;
+        opacity: 0.5;
+        transition: opacity 0.5s ease;
         pointer-events: none;
-        padding: 0 16px;
+        padding: 26px 16px 0;
+        background: linear-gradient(transparent, rgba(10, 10, 10, 0.82) 55%);
       }
-      .dr-stage:hover .dr-slide.is-active .dr-caption,
-      .dr-slide.is-active.dr-peek .dr-caption { opacity: 1; }
+      .dr-slide.is-active.dr-peek .dr-caption,
+      .dr-caption.is-open { opacity: 1; }
       .dr-cap-title { font-size: 14px; color: #d1d5db; }
       .dr-cap-sub { font-size: 12px; color: #6b7280; margin-top: 3px; }
       .dr-cap-meta { font-size: 11px; color: #4b5563; margin-top: 3px; letter-spacing: 0.05em; }
+      /* 配文：折叠两行半隐；is-open 时放开并提亮 */
+      .dr-cap-desc {
+        margin: 10px auto 0;
+        max-width: 560px;
+        font-size: 13px;
+        line-height: 1.9;
+        color: #a3a3a3;
+        white-space: pre-line;
+        text-align: left;
+        opacity: 0.55;
+        transition: opacity 0.5s ease;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        pointer-events: auto;
+        cursor: pointer;
+      }
+      .dr-caption.is-open .dr-cap-desc {
+        -webkit-line-clamp: unset;
+        display: block;
+        overflow: visible;
+        opacity: 1;
+      }
+      /* 呼吸下箭 hint：折叠态常驻示意"下面有内容" */
+      .dr-cap-hint {
+        margin: 8px 0 0;
+        font-size: 10px;
+        letter-spacing: 0.28em;
+        color: #c9a558;
+        pointer-events: auto;
+        cursor: pointer;
+        animation: hint-breathe 2.6s ease-in-out infinite;
+      }
+      .dr-caption.is-open .dr-cap-hint { display: none; }
+      @keyframes hint-breathe {
+        0%, 100% { opacity: 0.28; }
+        50% { opacity: 0.85; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .dr-cap-hint { animation: none; opacity: 0.6; }
+      }
 
       .dr-empty {
         position: absolute;
@@ -362,9 +413,7 @@ const cur = nav.findIndex((n) => n.id === project.id);
         .dr-title { display: none; }
         .dr-stage { margin: 0 3vw; }
         .dr-slide img { max-height: calc(100dvh - 160px); }
-        /* 移动端没有悬停：元数据以极淡常驻，长按短暂加重 */
-        .dr-caption { opacity: 0.001; }
-        .dr-slide.is-active.dr-peek .dr-caption { opacity: 0.95; }
+        /* caption 与桌面同款：半隐常驻，竖滑或点配文区展开 */
       }
     </style>
 
@@ -391,7 +440,9 @@ const cur = nav.findIndex((n) => n.id === project.id);
             s.classList.toggle('is-active', k === cur);
             s.setAttribute('aria-hidden', k === cur ? 'false' : 'true');
           });
-          if (progress) progress.textContent = `${cur + 1} / ${total}`;
+          // 换帧即收起上一帧配文：每帧从半隐折叠态讲起
+          stage.querySelectorAll('.dr-caption.is-open').forEach((c) => c.classList.remove('is-open'));
+          if (progress) progress.textContent = cur === 0 ? `序言 · 共 ${total - 1} 张` : `照片 ${cur} / ${total - 1}`;
           // 纯鼠标辅助：序言帧（0）隐藏箭头；进入展线后显示；
           // 键位提示只在刚进展线的第一帧亮一次，随即淡出
           if (prevBtn) prevBtn.classList.toggle('is-off', cur <= 1);
@@ -404,12 +455,51 @@ const cur = nav.findIndex((n) => n.id === project.id);
         prevBtn?.addEventListener('click', () => show(cur - 1));
         nextBtn?.addEventListener('click', () => show(cur + 1));
 
-        // 键盘：←/→ 翻页（Home/End 跳首尾）
+        // 键盘：←/→ 翻页；↓ 展开当前帧配文（再按收起），↑ 收起。
+        // Home/End 保留跳首尾。
         window.addEventListener('keydown', (e) => {
           if (e.key === 'ArrowRight') { e.preventDefault(); show(cur + 1); }
           else if (e.key === 'ArrowLeft') { e.preventDefault(); show(cur - 1); }
+          else if (e.key === 'ArrowDown') { e.preventDefault(); toggleCaption(); }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); setCaption(false); }
           else if (e.key === 'Home') show(0);
           else if (e.key === 'End') show(total - 1);
+        });
+
+        // 配文展开控制：作用于当前帧的 caption（仅当它有配文时）
+        function activeCaption() {
+          return slides[cur]?.querySelector('.dr-caption.has-desc');
+        }
+        function setCaption(open) {
+          const cap = activeCaption();
+          if (cap) cap.classList.toggle('is-open', open);
+        }
+        function toggleCaption() {
+          const cap = activeCaption();
+          if (cap) cap.classList.toggle('is-open');
+        }
+
+        // 滚轮：下滚展开配文，上滚收起。阈值防误触；不阻断左右翻页语义
+        let wheelAcc = 0, wheelTimer = null;
+        stage.addEventListener('wheel', (e) => {
+          const cap = activeCaption();
+          if (!cap) return;
+          // 已展开且滚到底部时放行正常行为（页面无滚动条，忽略即可）
+          wheelAcc += e.deltaY;
+          clearTimeout(wheelTimer);
+          wheelTimer = setTimeout(() => { wheelAcc = 0; }, 180);
+          if (wheelAcc > 42) { cap.classList.add('is-open'); wheelAcc = 0; }
+          else if (wheelAcc < -42) { cap.classList.remove('is-open'); wheelAcc = 0; }
+        }, { passive: true });
+
+        // 点/按配文区（折叠态或呼吸 hint）直接展开。
+        // stopPropagation 放在捕获后的目标级，避免与序言单击入展冲突。
+        stage.querySelectorAll('.dr-cap-desc, .dr-cap-hint').forEach((el) => {
+          el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const cap = el.closest('.dr-caption');
+            if (cap) cap.classList.add('is-open');
+          });
         });
 
         // 单击：序言帧（第 0 帧）上点击任意处即进入展线；
@@ -436,7 +526,13 @@ const cur = nav.findIndex((n) => n.id === project.id);
           const dy = e.changedTouches[0].clientY - y0;
           x0 = null;
           slides[cur]?.classList.remove('dr-peek');
-          if (Math.abs(dx) > 44 && Math.abs(dx) > Math.abs(dy) * 1.4) show(cur + (dx < 0 ? 1 : -1));
+          if (Math.abs(dx) > 44 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+            show(cur + (dx < 0 ? 1 : -1));
+          } else if (dy < -44 && Math.abs(dy) > Math.abs(dx) * 1.4) {
+            // 竖滑上推 = 桌面滚轮下滚：展开配文
+            const cap = activeCaption();
+            if (cap) cap.classList.add('is-open');
+          }
         }, { passive: true });
       })();
     </script>
