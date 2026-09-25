@@ -359,6 +359,13 @@ const cur = nav.findIndex((n) => n.id === project.id);
           else if (e.key === 'End') show(total - 1);
         });
 
+        // 单击：序言帧（第 0 帧）上点击任意处即进入展线；
+        // 触屏点按同样生效（touchend 的滑动判定阈值远大于点按，互不干扰）。
+        // 照片帧不响应单击，保持"不打扰观看"。
+        stage.addEventListener('click', () => {
+          if (cur === 0 && total > 1) show(1);
+        });
+
         // 触屏：左右滑动翻页；长按露出元数据
         let x0 = null, y0 = null, peekTimer = null;
         stage.addEventListener('touchstart', (e) => {
