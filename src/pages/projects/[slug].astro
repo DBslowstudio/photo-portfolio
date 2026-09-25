@@ -77,10 +77,34 @@ const cur = nav.findIndex((n) => n.id === project.id);
     <header class="dr-top">
       <a href="/projects" class="dr-exit">← 退出暗室</a>
       <div class="dr-title">{project.data.title}</div>
-      <div class="dr-progress" id="dr-progress">1 / {slides.length}</div>
+      <div class="dr-progress" id="dr-progress">1 / {slides.length + 1}</div>
     </header>
 
     <main class="dr-stage" id="dr-stage" tabindex="-1" aria-label="照片浏览区，左右方向键或滑动翻页">
+      {
+        // 序言帧（参考站系列页体例：大图 + 中文在上、英文在下的自述）。
+        // 作为第 0 帧复用键盘/滑动翻页，←回到序言、→即入展线。
+        <figure class="dr-slide dr-pros" data-index={-1}>
+          <div class="dr-pros-inner">
+            <img
+              src={(slides[0] && slides[0].src) || project.data.cover || ''}
+              alt={project.data.title}
+              draggable="false"
+            />
+            <h1 class="dr-pros-title">{project.data.title}</h1>
+            {project.data.date && (
+              <p class="dr-pros-date">{project.data.date}</p>
+            )}
+            {project.data.summary && (
+              <div class="dr-pros-zh">{project.data.summary}</div>
+            )}
+            {project.data.summaryEn && (
+              <div class="dr-pros-en">{project.data.summaryEn}</div>
+            )}
+            <p class="dr-pros-hint">→ 开始观展</p>
+          </div>
+        </figure>
+      }
       {
         slides.map((s, i) => (
           <figure class="dr-slide" data-index={i} aria-hidden={i === 0 ? 'false' : 'true'}>
@@ -174,6 +198,64 @@ const cur = nav.findIndex((n) => n.id === project.id);
         transition: opacity 0.55s ease;
       }
       .dr-slide.is-active { opacity: 1; visibility: visible; }
+
+      /* 序言帧：窄栏滚动排版，与照片帧共用翻页机制 */
+      .dr-slide.dr-pros {
+        align-items: flex-start;
+        justify-content: center;
+        overflow-y: auto;
+        opacity: 0;
+      }
+      .dr-slide.dr-pros.is-active { opacity: 1; }
+      .dr-pros-inner {
+        width: min(680px, 92vw);
+        margin: clamp(20px, 6vh, 60px) auto calc(30px + env(safe-area-inset-bottom));
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 22px;
+      }
+      .dr-pros-inner img {
+        width: min(520px, 88vw);
+        height: auto;
+        border-radius: 2px;
+      }
+      .dr-pros-title {
+        font-size: clamp(22px, 3.4vw, 34px);
+        font-weight: 300;
+        letter-spacing: 0.12em;
+        color: #e5e5e5;
+        margin: 6px 0 0;
+      }
+      .dr-pros-date {
+        font-size: 11px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: #6b7280;
+        margin: 0;
+      }
+      .dr-pros-zh {
+        font-size: 14px;
+        line-height: 2.1;
+        color: #a3a3a3;
+        white-space: pre-line;
+        text-align: left;
+      }
+      .dr-pros-en {
+        font-size: 12px;
+        line-height: 2;
+        color: #4b5563;
+        white-space: pre-line;
+        text-align: left;
+      }
+      .dr-pros-hint {
+        font-size: 11px;
+        letter-spacing: 0.3em;
+        color: #c9a558;
+        opacity: 0.8;
+        margin: 10px 0 0;
+      }
       .dr-slide img {
         max-width: 100%;
         max-height: calc(100dvh - 190px);

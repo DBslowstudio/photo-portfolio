@@ -147,7 +147,13 @@ build: {
           {
             type: 'string',
             name: 'summary',
-            label: '一句话简介',
+            label: '一句话简介（中文）',
+            ui: { component: 'textarea' },
+          },
+          {
+            type: 'string',
+            name: 'summaryEn',
+            label: 'English blurb',
             ui: { component: 'textarea' },
           },
           {

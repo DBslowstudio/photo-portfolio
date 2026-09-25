@@ -44,8 +44,10 @@ const projects = defineCollection({
   loader: glob({ pattern: '**/*.md', base: './src/content/projects' }),
   schema: z.object({
     title: z.string(),
-    // 专题一句话简介，列表页展示
+    // 专题一句话简介（中文），列表页左上、暗室序言用
     summary: z.string().optional(),
+    // 英文简介（对照中文），没有时相关区块自动隐藏
+    summaryEn: z.string().optional(),
     date: z.string().optional(),
     cover: z.string().optional(),
     photos: z.array(z.string()).default([]),

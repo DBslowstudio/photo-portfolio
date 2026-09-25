@@ -78,20 +78,18 @@ function stripOf(p: (typeof projects)[number]): string[] {
                   <span class="w-meta">
                     {p.data.photos.length} 张{p.data.date ? ` · ${p.data.date}` : ''}
                   </span>
-                  {strip.length > 0 && (
-                    <div class="w-strip">
-                      {strip.map((src, i) => (
-                        <img src={src} alt={i === 0 ? p.data.title : ''} loading="lazy" />
-                      ))}
-                    </div>
-                  )}
+                  {p.data.summary && <p class="w-blurb">{p.data.summary}</p>}
+                  {p.data.summaryEn && <p class="w-blurb-en">{p.data.summaryEn}</p>}
+                  <span class="w-enter">进入暗室 →</span>
                 </div>
                 <div class="w-right">
-                  {p.data.summary ? (
-                    <p class="w-blurb">{p.data.summary}</p>
-                  ) : (
-                    <span class="w-enter">进入暗室 →</span>
-                  )}
+                  <div class="w-grid">
+                    {
+                      strip.map((src) => (
+                        <img src={src} alt={p.data.title} loading="lazy" />
+                      ))
+                    }
+                  </div>
                 </div>
               </a>
             );
@@ -102,14 +100,14 @@ function stripOf(p: (typeof projects)[number]): string[] {
   </div>
 
   <style>
-    /* 社论行布局：图录式，黑金版 */
+    /* 社论行布局：左上中文、左下英文对照、右侧组图墙（参考站体例，黑金版） */
     .work-list {
       border-top: 1px solid rgb(255 255 255 / 0.16);
     }
     .work-row {
       display: grid;
-      grid-template-columns: minmax(220px, 32%) 1fr;
-      gap: clamp(20px, 4vw, 72px);
+      grid-template-columns: minmax(240px, 34%) 1fr;
+      gap: clamp(20px, 4vw, 64px);
       padding: clamp(28px, 4vw, 52px) 0;
       border-bottom: 1px solid rgb(255 255 255 / 0.1);
       align-items: start;
@@ -122,7 +120,7 @@ function stripOf(p: (typeof projects)[number]): string[] {
     .w-left {
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 12px;
     }
     .w-title {
       font-size: clamp(20px, 2.4vw, 34px);
@@ -141,31 +139,16 @@ function stripOf(p: (typeof projects)[number]): string[] {
       text-transform: uppercase;
       color: #6b7280;
     }
-    /* 缩略条：展线前三张，发丝间距，微光过渡 */
-    .w-strip {
-      display: flex;
-      gap: 6px;
-      margin-top: 4px;
-    }
-    .w-strip img {
-      width: 84px;
-      aspect-ratio: 4 / 3;
-      object-fit: cover;
-      border-radius: 2px;
-      opacity: 0.72;
-      transition: opacity 0.35s;
-    }
-    .work-row:hover .w-strip img {
-      opacity: 1;
-    }
-    .w-right {
-      padding-top: 6px;
-      min-width: 0;
-    }
     .w-blurb {
       color: #a3a3a3;
       font-size: 14px;
       line-height: 1.9;
+      max-width: 460px;
+    }
+    .w-blurb-en {
+      color: #525252;
+      font-size: 12px;
+      line-height: 1.8;
       max-width: 460px;
     }
     .w-enter {
@@ -173,9 +156,30 @@ function stripOf(p: (typeof projects)[number]): string[] {
       letter-spacing: 0.18em;
       color: #525252;
       transition: color 0.3s;
+      margin-top: 2px;
     }
     .work-row:hover .w-enter {
       color: #c9a558;
+    }
+    /* 右侧组图墙：展线前 3 张满幅排布 */
+    .w-right {
+      min-width: 0;
+    }
+    .w-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+    .w-grid img {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      border-radius: 2px;
+      opacity: 0.72;
+      transition: opacity 0.35s;
+    }
+    .work-row:hover .w-grid img {
+      opacity: 1;
     }
     @media (max-width: 767px) {
       .work-row {
