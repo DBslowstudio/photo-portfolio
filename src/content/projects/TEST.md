@@ -12,10 +12,9 @@ summary: |-
 summaryEn: 'This is a long text used to test plain text display effects. It does not contain any Markdown formatting and is primarily used to check font rendering, line spacing, and paragraph alignment. In web or application development, ensuring the readability of long text across different screen sizes is crucial. This text will help you evaluate whether the current CSS styles meet expectations and if there are any layout issues.'
 date: '20260924'
 photos:
-  - /photosp-016
-  - /photosp-017
-  - /photosp-018
-  - /photosp-019
-  - ''
+  - /photos/p-016.jpg
+  - /photos/p-017.jpg
+  - /photos/p-018.jpg
+  - /photos/p-019.jpg
 ---
 
