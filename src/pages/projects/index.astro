@@ -36,14 +36,53 @@ function coverOf(p: (typeof projects)[number]): string {
   return '';
 }
 
-// 缩略图条：整条展线全部照片（布局自动换行；顺序即策展顺序）
-function stripOf(p: (typeof projects)[number]): string[] {
-  const out: string[] = [];
-  if (p.data.cover) out.push(p.data.cover);
+// 构建期读图片头部取真实宽高比（纯 JS，零依赖）。失败回退 4:3。
+import fs from 'node:fs';
+import path from 'node:path';
+const ratioCache = new Map();
+function ratioOf(src) {
+  if (ratioCache.has(src)) return ratioCache.get(src);
+  let r = 1.333;
+  try {
+    const fp = path.join(process.cwd(), 'public', src.replace(/^\//, ''));
+    const fd = fs.openSync(fp, 'r');
+    // 读取窗口要够大：相机 JPEG 的 EXIF 段内嵌缩略图，SOF 常推到 70KB+ 之外
+    const buf = Buffer.alloc(512 * 1024);
+    const n = fs.readSync(fd, buf, 0, buf.length, 0);
+    fs.closeSync(fd);
+    if (buf[0] === 0xff && buf[1] === 0xd8) {
+      // JPEG：扫 SOF 段
+      let i = 2;
+      while (i < n - 9) {
+        if (buf[i] !== 0xff) { i++; continue; }
+        const m = buf[i + 1];
+        if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) {
+          r = buf.readUInt16BE(i + 7) / buf.readUInt16BE(i + 5);
+          break;
+        }
+        if (m === 0xd8 || m === 0x01 || (m >= 0xd0 && m <= 0xd7)) { i += 2; continue; }
+        i += 2 + buf.readUInt16BE(i + 2);
+      }
+    } else if (buf[0] === 0x89 && buf[1] === 0x50) {
+      // PNG：IHDR 定长
+      r = buf.readUInt32BE(16) / buf.readUInt32BE(20);
+    }
+    if (!Number.isFinite(r) || r <= 0 || r > 6) r = 1.333;
+  } catch { /* 兜底 4:3 */ }
+  ratioCache.set(src, r);
+  return r;
+}
+
+// 组图墙：整条展线（src + 原始宽高比），等高瀑布流按真实比例占宽
+function stripOf(p: (typeof projects)[number]): { src: string; r: number }[] {
+  const out: { src: string; r: number }[] = [];
+  const push = (src: string) => {
+    if (!out.some((o) => o.src === src)) out.push({ src, r: ratioOf(src) });
+  };
+  if (p.data.cover) push(p.data.cover);
   for (const ref of p.data.photos) {
     const e = photosById.get(normKey(ref));
-    const src = e?.data.image;
-    if (src && !out.includes(src)) out.push(src);
+    if (e?.data.image) push(e.data.image);
   }
   return out;
 }
@@ -88,8 +127,13 @@ function stripOf(p: (typeof projects)[number]): string[] {
                 <div class="w-right">
                   <div class="w-grid">
                     {
-                      strip.map((src) => (
-                        <img src={src} alt={p.data.title} loading="lazy" />
+                      strip.map((it) => (
+                        <img
+                          src={it.src}
+                          alt={p.data.title}
+                          loading="lazy"
+                          style={`--ar:${it.r.toFixed(4)}`}
+                        />
                       ))
                     }
                   </div>
@@ -164,18 +208,22 @@ function stripOf(p: (typeof projects)[number]): string[] {
     .work-row:hover .w-enter {
       color: #c9a558;
     }
-    /* 右侧组图墙：展线全部照片，每格约 140px 自适应，超一行自动换行 */
+    /* 右侧组图墙：等高瀑布流——高度固定，宽度=高度×真实宽高比，
+       一行放不下自动换行；顺序严格从左到右（策展顺序不被列填充打乱） */
     .w-right {
       min-width: 0;
     }
     .w-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      align-content: flex-start;
       gap: 6px;
     }
     .w-grid img {
-      width: 100%;
-      aspect-ratio: 4 / 3;
+      height: clamp(110px, 15vw, 168px);
+      width: auto;
+      aspect-ratio: var(--ar, 1.333);
       object-fit: cover;
       border-radius: 2px;
       opacity: 0.72;
