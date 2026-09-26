@@ -17,16 +17,20 @@ const projects = (await getCollection('projects')).sort((a, b) =>
   String(b.data.date || '').localeCompare(String(a.data.date || '')),
 );
 
-// slug -> 照片条目。展线引用与 mdx 文件名可能带/不带扩展名，这里统一去扩展名建键
+// slug -> 照片条目。兼容两种清单格式：旧 p-016 / 新 /photos/p-016.jpg
+const normKey = (ref) =>
+  String(ref)
+    .replace(/^\/?photos\//, '')
+    .replace(/\.(mdx?|md|jpe?g|png|webp)$/i, '');
 const photosById = new Map(
-  (await getCollection('photos')).map((p) => [p.id.replace(/\.(mdx?|md)$/, ''), p]),
+  (await getCollection('photos')).map((p) => [normKey(p.id), p]),
 );
 
 // 封面：优先后台设定；否则取展线第一张的真实 image 路径（不猜扩展名）
 function coverOf(p: (typeof projects)[number]): string {
   if (p.data.cover) return p.data.cover;
   for (const ref of p.data.photos) {
-    const e = photosById.get(ref.replace(/\.(mdx?|md)$/, ''));
+    const e = photosById.get(normKey(ref));
     if (e?.data.image) return e.data.image;
   }
   return '';
@@ -37,7 +41,7 @@ function stripOf(p: (typeof projects)[number]): string[] {
   const out: string[] = [];
   if (p.data.cover) out.push(p.data.cover);
   for (const ref of p.data.photos) {
-    const e = photosById.get(ref.replace(/\.(mdx?|md)$/, ''));
+    const e = photosById.get(normKey(ref));
     const src = e?.data.image;
     if (src && !out.includes(src)) out.push(src);
     if (out.length >= 3) break;

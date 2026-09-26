@@ -168,12 +168,15 @@ build: {
             label: '封面图',
           },
           {
-            type: 'string',
+            type: 'image',
             name: 'photos',
             label: '照片清单（按观展顺序）',
             description:
-              '逐行填入碎片区照片的文件名（不含路径与扩展名），顺序即展线。不存在的条目会被跳过',
+              '点击添加后从图库（public/photos）按缩略图挑选，可连续多选；拖动卡片调整顺序，顺序即展线。不在图库中的条目会被跳过',
             list: true,
+            ui: {
+              allowedFileExtensions: ['.jpg', '.jpeg', '.png', '.webp'],
+            },
           },
         ],
       },

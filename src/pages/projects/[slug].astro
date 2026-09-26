@@ -42,8 +42,13 @@ const photoById = new Map(
 
 const slides = [];
 const seen = new Set();
+// 归一化：旧格式 p-016、新格式（缩略图选择器）/photos/p-016.jpg，统一成 mdx 条目键
+const normKey = (ref) =>
+  String(ref)
+    .replace(/^\/?photos\//, '')
+    .replace(/\.(mdx?|md|jpe?g|png|webp)$/i, '');
 for (const ref of project.data.photos || []) {
-  const key = String(ref).replace(/\.(mdx?|md)$/, '');
+  const key = normKey(ref);
   if (seen.has(key)) continue;
   seen.add(key);
   const entry = photoById.get(key);
