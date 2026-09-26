@@ -139,7 +139,7 @@ const cur = nav.findIndex((n) => n.id === project.id);
       <!-- 纯鼠标辅助：金色箭头 + 键位提示；初始 is-off，由脚本按帧同步显隐 -->
       <button class="dr-arrow dr-arrow--prev is-off" id="dr-prev" type="button" aria-label="上一张">‹</button>
       <button class="dr-arrow dr-arrow--next is-off" id="dr-next" type="button" aria-label="下一张">›</button>
-      <p class="dr-keyhint is-off" id="dr-keyhint">← → 翻页 · ↓ 或滚动看配文</p>
+      <p class="dr-keyhint is-off" id="dr-keyhint"><span class="hk-desk">← → 翻页 · ↓ 或滚动看配文</span><span class="hk-touch">左滑下一张 · 上滑看配文</span></p>
     </main>
 
     <nav class="dr-bottom">
@@ -411,9 +411,17 @@ const cur = nav.findIndex((n) => n.id === project.id);
       }
       .dr-keyhint.is-off { opacity: 0; }
 
+      /* 键位/手势文案按指针类型二选一 */
+      .hk-touch { display: none; }
+      @media (pointer: coarse) {
+        .hk-desk { display: none; }
+        .hk-touch { display: inline; }
+      }
+
       @media (max-width: 640px) {
-        /* 触屏本可滑动翻页，隐藏箭头与键位提示 */
-        .dr-arrow, .dr-keyhint { display: none; }
+        /* 触屏同样放出箭头与提示：部分浏览器/安卓手势会拦截滑动，且观众未必知道能滑 */
+        .dr-arrow { font-size: 28px; padding: 10px 10px; opacity: 0.5; }
+        .dr-keyhint { bottom: 8px; right: 0; }
         .dr-top { padding: 12px 14px 0; }
         .dr-title { display: none; }
         .dr-stage { margin: 0 3vw; }
@@ -532,7 +540,8 @@ const cur = nav.findIndex((n) => n.id === project.id);
           x0 = null;
           slides[cur]?.classList.remove('dr-peek');
           if (Math.abs(dx) > 44 && Math.abs(dx) > Math.abs(dy) * 1.4) {
-            show(cur + (dx < 0 ? 1 : -1));
+            if (dx < 0) show(cur + 1);
+            else if (cur > 1) show(cur - 1); // 首张右滑不跌回序言：避免"右滑退出整组"的错觉
           } else if (dy < -44 && Math.abs(dy) > Math.abs(dx) * 1.4) {
             // 竖滑上推 = 桌面滚轮下滚：展开配文
             const cap = activeCaption();

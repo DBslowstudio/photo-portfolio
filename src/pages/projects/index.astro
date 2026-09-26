@@ -36,7 +36,7 @@ function coverOf(p: (typeof projects)[number]): string {
   return '';
 }
 
-// 缩略图条：展线前 3 张的真实图片路径（顺序即策展顺序的一部分）
+// 缩略图条：整条展线全部照片（布局自动换行；顺序即策展顺序）
 function stripOf(p: (typeof projects)[number]): string[] {
   const out: string[] = [];
   if (p.data.cover) out.push(p.data.cover);
@@ -44,7 +44,6 @@ function stripOf(p: (typeof projects)[number]): string[] {
     const e = photosById.get(normKey(ref));
     const src = e?.data.image;
     if (src && !out.includes(src)) out.push(src);
-    if (out.length >= 3) break;
   }
   return out;
 }
@@ -165,13 +164,13 @@ function stripOf(p: (typeof projects)[number]): string[] {
     .work-row:hover .w-enter {
       color: #c9a558;
     }
-    /* 右侧组图墙：展线前 3 张满幅排布 */
+    /* 右侧组图墙：展线全部照片，每格约 140px 自适应，超一行自动换行 */
     .w-right {
       min-width: 0;
     }
     .w-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
       gap: 6px;
     }
     .w-grid img {
