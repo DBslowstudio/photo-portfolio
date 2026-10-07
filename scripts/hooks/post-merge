@@ -1,0 +1,10 @@
+#!/bin/sh
+# post-merge hook：git pull 合并了新提交后，自动增量提取照片条目。
+# 场景：另一台机器（或 GitHub 网页）直接推了 public/photos 的新照片，
+# 本机 pull 下来时 src/content/photos 里没有对应 mdx，
+# 首屏扑克牌/网格/后台编辑都会看不到这批新照片。
+# 本钩子保证 pull 后条目与图片始终同步；extract-exif 只新建不覆盖，安全。
+node scripts/extract-exif.js
+if [ -n "$(git status --porcelain -- src/content/photos)" ]; then
+  echo "[hook] extract-exif 生成/更新了内容条目——记得 git add + commit + push，云端和后台才会看到它们"
+fi

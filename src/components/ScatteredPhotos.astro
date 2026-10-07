@@ -25,12 +25,19 @@ const { photos } = Astro.props;
  */
 const MAX_RENDERED = 30;
 
-// 按拍摄日期倒序，与下方画廊网格顺序一致
-const sorted = [...photos].sort((a, b) =>
-  (b.data.date ?? '').localeCompare(a.data.date ?? ''),
-);
+/**
+ * 候选池 = 全库随机抽样，而不是"按日期取最新 30 张"。
+ * 之前的切片写法让扑克牌永远只从最新一批里出牌，第二批照片上传后
+ * 首屏完全见不到——这里改成构建期洗牌后取前 MAX_RENDERED 张，
+ * 每一批部署抽到的组合都不同（客户端再从中随机 20-30 张撒出）。
+ */
+const pool = [...photos];
+for (let i = pool.length - 1; i > 0; i--) {
+  const j = Math.floor(Math.random() * (i + 1));
+  [pool[i], pool[j]] = [pool[j], pool[i]];
+}
 
-const rendered = sorted.slice(0, MAX_RENDERED);
+const rendered = pool.slice(0, MAX_RENDERED);
 ---
 
 <section class="scattered-container" id="scattered" aria-label="散落照片展示">
